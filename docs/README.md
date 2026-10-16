@@ -9,3 +9,4 @@
 | [DEPLOY_CLOUD_RUN.md](DEPLOY_CLOUD_RUN.md) | Deploying to Google Cloud Run |
 | [ENGINEERING_REVIEW.md](ENGINEERING_REVIEW.md) | Multi-role review: what was fixed and what is open, with reasons |
 | [DESIGN_NOTES.md](DESIGN_NOTES.md) | Milestones and design decisions D-D1 to D-D12 |
+| [VALIDATION.md](VALIDATION.md) | Release validation: every check and its result |
