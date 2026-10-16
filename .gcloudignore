@@ -1,0 +1,19 @@
+# Only what the image copies; everything else stays out of the build context.
+*
+!requirements.lock
+!packages/
+!services/
+!config/
+!policies/
+!eval/reports/*.json
+!apps/console/
+apps/console/node_modules/
+apps/console/dist/
+apps/console/*.tsbuildinfo
+**/__pycache__
+**/*.egg-info
+**/*.pyc
+.env
+.env.*
+!Dockerfile
+!deploy/

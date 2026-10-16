@@ -1,0 +1,7 @@
+# Lint (CI): correctness rules only - syntax errors and pyflakes (unused/undefined names). Style is not gated.
+line-length = 130
+target-version = "py311"
+extend-exclude = ["apps", "data"]
+
+[lint]
+select = ["E9", "F"]

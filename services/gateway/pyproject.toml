@@ -1,0 +1,18 @@
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "intentseal-gateway"
+version = "0.1.0"
+description = "IntentSeal Delegate gateway: Delegate API, content filter API, Console host, LLM proxy"
+requires-python = ">=3.11"
+dependencies = ["intentseal-core", "intentseal", "fastapi>=0.110", "uvicorn[standard]", "pyyaml",
+                "reportlab>=4"]   # reportlab renders the sandbox PDFs of the live demo
+
+[project.optional-dependencies]
+google = ["google-adk==2.12.0"]   # Gemini agents (Google ADK); the image installs it
+
+[tool.setuptools.packages.find]
+where = ["."]
+include = ["intentseal_gateway*"]

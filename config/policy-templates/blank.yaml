@@ -1,0 +1,8 @@
+# Template: nothing allowed yet. Start in monitor mode, watch which tools the agent calls, then add them.
+title: Blank (observe first)
+description: No tools listed. Monitor mode records every call so you can build the policy from real traffic.
+policy:
+  mode: monitor
+  task_scope: ""
+  tools: {}
+  unknown_tools: block

@@ -1,0 +1,13 @@
+# Content firewall policy for IntentSeal Delegate (step 5). Delegate's own gate (policies/delegate/workspace.yaml)
+# decides tool calls; this policy only governs how content agents read is inspected and cleaned.
+agent: delegate-workspace
+version: "1"
+mode: enforce
+task_scope: "Office work for Lotus Interiors staff: email, quotes and shared drive files."
+tools: {}
+unknown_tools: block
+sensitive_data:
+  patterns: [api_key, credential, customer_record]
+  drop_non_visible: true
+thresholds:
+  judge_untrusted: classifier

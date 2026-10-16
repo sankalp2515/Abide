@@ -1,0 +1,16 @@
+# Template: a support agent that looks up customers, reads the knowledge base and replies to customers.
+title: Customer support agent
+description: Customer lookups pinned to the signed-in customer; refunds need approval; replies only to the requester.
+policy:
+  mode: monitor
+  task_scope: "Help the signed-in customer with their account, orders and questions."
+  tools:
+    search_kb:      { risk: low,    failure: open }
+    lookup_customer: { risk: medium, failure: closed, pinned: [customer_id] }
+    lookup_order:   { risk: medium, failure: closed, pinned: [customer_id] }
+    issue_refund:   { risk: high,   failure: closed, pinned: [customer_id], escalate_if_uncertain: true,
+                      intent_terms: [refund, money, reimburse, return] }
+    reply_to_customer: { risk: high, failure: closed, escalate_if_uncertain: true, recipient_arg: to,
+                         intent_terms: [reply, email, send, contact, tell, update] }
+  unknown_tools: block
+  thresholds: { judge_untrusted: always }

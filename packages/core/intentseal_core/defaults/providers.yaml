@@ -1,0 +1,144 @@
+# LLM providers. The router reads this file; nothing about providers is hard-coded in logic.
+#
+# Adding an OpenAI-compatible provider = one block here + its key(s) in .env. Nothing else.
+# Adding a non-OpenAI API = an adapter class registered under a new `type` name.
+#
+# keys:
+#   env_prefix: FOO_API_KEY   -> reads FOO_API_KEY, FOO_API_KEY_1, FOO_API_KEY_2, ... (any count)
+#   env_list:   FOO_API_KEYS  -> optional comma-separated list
+#   Keys are referred to by alias only ("foo#1", "foo#2"); values are never printed or logged.
+#   Zero keys found => provider is auto-disabled.
+#
+# key_rotation:
+#   on_auth_failure (default): extra keys are used only if a key is rejected (401/403).
+#     A 429 backs off the whole provider and the router fails over to the next provider.
+#     This respects provider rate limits instead of working around them (see docs/DECISIONS.md D-004).
+#
+# limits (optional): client-side throttle so we stay under the provider's published limits.
+# budget (optional): daily token cap per provider; when reached the provider is skipped.
+# price_per_mtok on models (models.yaml) converts free-tier usage to list-price cost for reporting.
+
+defaults:
+  timeout_s: 30
+  connect_timeout_s: 5
+  retries: 1                 # extra attempts on 5xx / timeout, same provider
+  backoff_base_s: 1.0        # exponential backoff base for 5xx / 429 without retry-after
+  backoff_max_s: 60
+  circuit_failures: 3        # consecutive failures that open the circuit
+  circuit_open_s: 60
+  key_rotation: on_auth_failure
+
+providers:
+  groq:
+    type: openai_compatible
+    enabled: true
+    base_url: https://api.groq.com/openai/v1
+    keys: { env_prefix: GROQ_API_KEY, env_list: GROQ_API_KEYS }
+    priority: 1
+    timeout_s: 30
+    limits: { rpm: 30, tpm: 8000 }   # Groq free tier: per model (also 1K req and 200K tokens per day)
+
+  gemini:
+    type: openai_compatible
+    enabled: true
+    base_url: https://generativelanguage.googleapis.com/v1beta/openai
+    keys: { env_prefix: GEMINI_API_KEY, env_list: GEMINI_API_KEYS }
+    priority: 2
+    timeout_s: 45
+    limits: { rpm: 10 }
+
+  openrouter:
+    type: openai_compatible
+    enabled: true
+    base_url: https://openrouter.ai/api/v1
+    keys: { env_prefix: OPENROUTER_API_KEY, env_list: OPENROUTER_API_KEYS }
+    priority: 3
+    timeout_s: 60
+    limits: { rpm: 20 }
+    extra_headers: { X-Title: "IntentSeal (dev)" }
+
+  nvidia:
+    type: openai_compatible
+    enabled: true
+    base_url: https://integrate.api.nvidia.com/v1
+    keys: { env_prefix: NVIDIA_API_KEY, env_list: NVIDIA_API_KEYS }
+    priority: 4
+    timeout_s: 60
+    limits: { rpm: 40 }
+
+  mistral:
+    type: openai_compatible
+    enabled: true
+    base_url: https://api.mistral.ai/v1
+    keys: { env_prefix: MISTRAL_API_KEY, env_list: MISTRAL_API_KEYS }
+    priority: 5
+    timeout_s: 45
+    limits: { rpm: 60 }
+
+  # ---- Paid and self-hosted providers. Each becomes active as soon as its key is in the environment; none is used by
+  # a role in models.yaml until you add it there, so the free-tier defaults above are unchanged. Agents protected by
+  # the proxy can also name any of these as their own upstream (policy `upstream:`, docs/INTEGRATION.md).
+  openai:
+    type: openai_compatible
+    enabled: true
+    base_url: https://api.openai.com/v1
+    keys: { env_prefix: OPENAI_API_KEY, env_list: OPENAI_API_KEYS }
+    priority: 10
+    timeout_s: 60
+
+  anthropic:                       # native Messages API through the official SDK (extra: intentseal-core[anthropic])
+    type: anthropic
+    enabled: true
+    base_url: https://api.anthropic.com
+    keys: { env_prefix: ANTHROPIC_API_KEY, env_list: ANTHROPIC_API_KEYS }
+    priority: 11
+    timeout_s: 120
+
+  azure_openai:                    # set the base URL to your resource: https://<resource>.openai.azure.com/openai/v1
+    type: openai_compatible
+    enabled: false
+    base_url: https://YOUR-RESOURCE.openai.azure.com/openai/v1
+    keys: { env_prefix: AZURE_OPENAI_API_KEY }
+    auth_header: api-key
+    priority: 12
+    timeout_s: 60
+
+  deepseek:
+    type: openai_compatible
+    enabled: true
+    base_url: https://api.deepseek.com/v1
+    keys: { env_prefix: DEEPSEEK_API_KEY }
+    priority: 13
+    timeout_s: 60
+
+  xai:
+    type: openai_compatible
+    enabled: true
+    base_url: https://api.x.ai/v1
+    keys: { env_prefix: XAI_API_KEY }
+    priority: 14
+    timeout_s: 60
+
+  together:
+    type: openai_compatible
+    enabled: true
+    base_url: https://api.together.xyz/v1
+    keys: { env_prefix: TOGETHER_API_KEY }
+    priority: 15
+    timeout_s: 60
+
+  ollama:                          # local models: any OpenAI-compatible server (Ollama, vLLM, LM Studio, llama.cpp)
+    type: openai_compatible
+    enabled: false
+    base_url: http://localhost:11434/v1
+    no_auth: true
+    priority: 20
+    timeout_s: 120
+
+  # Optional external decision model (a paid service); disabled by default.
+  jev:
+    type: jev
+    enabled: false
+    base_url: https://api.typesafe.ai
+    keys: { env_prefix: JEV_API_KEY }
+    priority: 99

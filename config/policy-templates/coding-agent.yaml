@@ -1,0 +1,14 @@
+# Template: a coding agent working inside one workspace.
+title: Coding agent
+description: Reads and writes inside the workspace; shell commands and network calls need approval or an allow-list.
+policy:
+  mode: monitor
+  task_scope: "Make the code changes the user asks for inside this repository."
+  tools:
+    read_file:   { risk: low,    failure: open, path_arg: path }
+    write_file:  { risk: medium, failure: closed, path_arg: path }
+    run_command: { risk: high,   failure: closed, escalate_if_uncertain: true,
+                   intent_terms: [run, test, build, install, execute, command] }
+    http_get:    { risk: medium, failure: open, allowed_domains: [pypi.org, github.com, docs.python.org], url_arg: url }
+  unknown_tools: block
+  thresholds: { judge_untrusted: always }

@@ -1,0 +1,18 @@
+# Template: an assistant that reads documents, web pages and email and can send internal messages.
+# Rename the tools to your agent's real tool names; any tool not listed is blocked in enforce mode
+# (monitor mode logs it instead: watch the Decisions page for "tool-not-allowed", then add the tool here).
+title: Research assistant
+description: Reads files, web pages and email; writes notes; sends messages to your own domain only.
+policy:
+  mode: monitor
+  task_scope: "Answer the user's questions using their files, email and approved web sources."
+  tools:
+    read_file:    { risk: low,    failure: open, path_arg: path }
+    read_email:   { risk: low,    failure: open }
+    web_fetch:    { risk: medium, failure: open, allowed_domains: [example.com], url_arg: url }
+    write_file:   { risk: medium, failure: closed, path_arg: path }
+    send_message: { risk: high,   failure: closed, escalate_if_uncertain: true,
+                    allowed_recipients: ["@example.com"], recipient_arg: to,
+                    intent_terms: [send, email, mail, reply, forward, message, notify, share] }
+  unknown_tools: block
+  thresholds: { judge_untrusted: always }

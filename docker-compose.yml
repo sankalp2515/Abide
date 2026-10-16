@@ -1,0 +1,67 @@
+# IntentSeal Delegate on your machine: the gateway (API + Delegate + Console + content filter) and PostgreSQL.
+#
+#   cp .env.example .env            # optional: add GEMINI_API_KEY to let Gemini draft cards and write receipts
+#   docker compose up --build -d    # Console: http://localhost:8000  ·  API docs: http://localhost:8000/docs
+#   docker compose ps               # both services should become "healthy"
+#   docker compose down             # stop (data stays in the named volumes; add -v to delete it)
+#
+# Production shape: the gateway is stateless apart from the live demo's sandboxes; all evidence (contracts, receipts,
+# approvals, decisions) is in PostgreSQL. Ports are bound to this machine only. For any shared host, set your own long
+# random keys and secrets in .env (see .env.example) — the defaults below are for local use only.
+name: intentseal-delegate
+
+x-keys:
+  public: &public-key ${INTENTSEAL_PUBLIC_KEY:-local-public-key}
+
+services:
+  postgres:
+    image: postgres:16.4-alpine
+    environment:
+      POSTGRES_USER: intentseal
+      POSTGRES_DB: intentseal
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-intentseal-local-only}
+    volumes: ["pg-data:/var/lib/postgresql/data"]
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U intentseal -d intentseal"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    restart: unless-stopped
+    mem_limit: 512m
+    security_opt: ["no-new-privileges:true"]
+    # no published port: only the gateway reaches it, on the private compose network
+
+  gateway:
+    build:
+      context: .
+      args:
+        VITE_API_KEY: *public-key         # the Console's read-only key; must equal INTENTSEAL_PUBLIC_KEY
+    image: intentseal-delegate:local
+    depends_on:
+      postgres: { condition: service_healthy }
+    env_file: [{ path: .env, required: false }]
+    environment:
+      PORT: "8000"
+      INTENTSEAL_DATABASE_URL: postgresql://intentseal:${POSTGRES_PASSWORD:-intentseal-local-only}@postgres:5432/intentseal
+      INTENTSEAL_API_KEYS: ${INTENTSEAL_API_KEYS:-local:local-project-key:project,localadmin:local-admin-key:admin}
+      INTENTSEAL_PUBLIC_KEY: *public-key
+      INTENTSEAL_DELEGATE_SECRET: ${INTENTSEAL_DELEGATE_SECRET:-local-only-seal-key-change-me}
+      INTENTSEAL_INVESTIGATOR_AUTO: "0"
+      INTENTSEAL_PUBLIC_RATE_LIMIT_PER_MIN: ${INTENTSEAL_PUBLIC_RATE_LIMIT_PER_MIN:-300}
+    ports: ["127.0.0.1:8000:8000"]
+    volumes: ["gateway-data:/data"]
+    healthcheck:                          # the first start loads the classifier: allow it time
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/readyz', timeout=8)"]
+      interval: 10s
+      timeout: 10s
+      start_period: 5m
+      retries: 3
+    restart: unless-stopped
+    stop_grace_period: 30s
+    mem_limit: 3g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+volumes:
+  pg-data:
+  gateway-data:

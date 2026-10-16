@@ -1,0 +1,106 @@
+# Roles -> ordered fallback lists of {provider, model}. The router tries them in order.
+# Model IDs verified by live calls on 5 Oct 2026 (docs/VALIDATE.md A5). Gemini 2.5 is closed to new
+# users; NVIDIA lists Kimi but does not serve it on our account.
+# Order is set by Validate results (A1 tool-calling, A5 proxy compatibility), not by guesswork.
+#
+# price_per_mtok: approximate public list price (USD per million tokens), used ONLY to convert
+# free-tier usage into an "equivalent cost" figure for the cost panel / overhead metric (CC7).
+# Re-check list prices before publishing any cost figure.
+
+roles:
+  # A general tool-calling agent model (needs reliable tool calling).
+  agent:
+    cache: false
+    defaults: { temperature: 0, max_tokens: 1024 }
+    models:
+      - { provider: groq,       model: openai/gpt-oss-120b,   price_per_mtok: { input: 0.15, output: 0.60 } }
+      - { provider: gemini,     model: gemini-3.1-flash-lite }
+      - { provider: nvidia,     model: nvidia/nemotron-3-super-120b-a12b }
+      - { provider: groq,       model: qwen/qwen3.8-27b }
+      - { provider: openrouter, model: "nvidia/nemotron-3-super-120b-a12b:free" }
+
+  # Agent model for bulk evaluation runs (fast, no daily cap observed); demo runs use `agent`.
+  agent_eval:
+    cache: false
+    defaults: { temperature: 0, max_tokens: 1024 }
+    models:
+      - { provider: nvidia,     model: nvidia/nemotron-3-super-120b-a12b }
+      - { provider: openrouter, model: "nvidia/nemotron-3-super-120b-a12b:free" }
+      - { provider: gemini,     model: gemini-3.1-flash-lite }
+
+  # Headline evaluation: a single model, no fallback, so numbers are attributable.
+  # Waits out Groq cooldowns rather than switching model (Groq free tier: 8K tokens/min, 200K/day).
+  agent_headline:
+    cache: false
+    wait_on_rate_limit_s: 180
+    defaults: { temperature: 0, max_tokens: 1024 }
+    models:
+      - { provider: groq, model: openai/gpt-oss-120b, price_per_mtok: { input: 0.15, output: 0.60 } }
+
+  # Tier-2 AI judge (DecisionModel 'generative_free'). Never given tools.
+  judge:
+    cache: true
+    max_queue_s: 2          # latency-sensitive: fail over instead of queueing behind a tokens/min limit
+    cache_ttl_s: 604800
+    defaults: { temperature: 0, max_tokens: 1000 }
+    models:
+      - { provider: groq,       model: openai/gpt-oss-20b,    params: { reasoning_effort: low }, price_per_mtok: { input: 0.075, output: 0.30 } }
+      - { provider: nvidia,     model: openai/gpt-oss-20b,    params: { reasoning_effort: low } }
+      - { provider: gemini,     model: gemini-3.1-flash-lite }
+      - { provider: openrouter, model: "nvidia/nemotron-3-super-120b-a12b:free" }
+
+  # Long documents (more than two judge windows, e.g. real web pages): one whole-document assessment by a
+  # long-context model instead of many windows of the judge above. Measured 8 Oct: 30K characters in 2.8 s,
+  # 300K characters (109K tokens) in 7.1 s on Nemotron 3 Ultra. If both fail, the windows run as before.
+  judge_long:
+    cache: true
+    max_queue_s: 5
+    cache_ttl_s: 604800
+    defaults: { temperature: 0, max_tokens: 1000 }
+    models:
+      - { provider: nvidia, model: nvidia/nemotron-3-ultra-550b-a55b }
+      - { provider: gemini, model: gemini-3.1-flash-lite }
+
+  # Tier-1 hosted classifier (Prompt Guard 2). Returns a probability; never decides alone (D-011).
+  tier1_remote:
+    cache: true
+    cache_ttl_s: 604800
+    defaults: { max_tokens: 8 }
+    models:
+      - { provider: groq, model: meta-llama/llama-prompt-guard-2-86m }
+
+  # Adversary loop (EVAL-4): generates variants of our own corpus cases, offline only.
+  redteam:
+    cache: false
+    defaults: { temperature: 0.9, max_tokens: 800 }
+    models:
+      - { provider: gemini,     model: gemini-3.1-flash-lite }
+      - { provider: groq,       model: qwen/qwen3.8-27b }
+      - { provider: nvidia,     model: nvidia/nemotron-3-super-120b-a12b }
+
+  # Upstream for the OpenAI-compatible LLM proxy (PRX-4: at least two providers).
+  proxy_upstream:
+    cache: false
+    defaults: { temperature: 0 }
+    models:
+      - { provider: groq,       model: openai/gpt-oss-120b,   price_per_mtok: { input: 0.15, output: 0.60 } }
+      - { provider: gemini,     model: gemini-3.1-flash-lite }
+      - { provider: nvidia,     model: nvidia/nemotron-3-super-120b-a12b }
+
+  # ---- IntentSeal Delegate (Google build): Gemini drafts the contract, writes the receipt and runs the agents ----
+  # The drafter's and writer's output is a proposal: the grounding validator and the receipt check decide.
+  contract:
+    cache: true
+    cache_ttl_s: 86400
+    defaults: { temperature: 0, max_tokens: 4000 }
+    models:
+      - { provider: gemini, model: gemini-3.5-flash, params: { reasoning_effort: low } }
+      - { provider: gemini, model: gemini-flash-latest, params: { reasoning_effort: low } }
+      - { provider: gemini, model: gemini-3.1-flash-lite }
+  receipt:
+    cache: false
+    defaults: { temperature: 0, max_tokens: 4000 }
+    models:
+      - { provider: gemini, model: gemini-3.5-flash, params: { reasoning_effort: low } }
+      - { provider: gemini, model: gemini-flash-latest, params: { reasoning_effort: low } }
+      - { provider: gemini, model: gemini-3.1-flash-lite }

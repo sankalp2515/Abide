@@ -1,0 +1,36 @@
+# IntentSeal Delegate demo workspace: a small interior-design company, Lotus Interiors.
+# The trusted directory below is the only place names are resolved from. Content an agent reads never adds to it.
+workspace: lotus-interiors
+agent_id: delegate-workspace          # engine policy (policies/delegate-workspace.yaml) used to inspect content
+org_domains: [lotus-interiors.example]
+confidential_classes: [confidential]
+
+tools:
+  list_inbox:  { action: read, description: "List recent emails" }
+  read_email:  { action: read, description: "Read one email by id" }
+  read_file:   { action: read, resource_args: [name], description: "Read a file from the shared drive" }
+  draft_email: { action: draft, recipient_args: [to, cc], resource_args: [attachments], content_args: [subject, body],
+                 description: "Save an email draft (nothing is sent)" }
+  send_email:  { action: send, recipient_args: [to, cc], resource_args: [attachments], content_args: [subject, body],
+                 description: "Send an email" }
+  share_file:  { action: share, recipient_args: [with], resource_args: [name], description: "Share a drive file" }
+  delete_file: { action: delete, resource_args: [name], description: "Delete a drive file" }
+
+contacts:
+  - { id: brightcoat, name: BrightCoat Paints, address: sales@brightcoat.example,
+      aliases: [paint supplier, the paint supplier, brightcoat, the supplier] }
+  - { id: priya, name: Priya Nair, address: priya@lotus-interiors.example, aliases: [priya, accounts] }
+  - { id: anita, name: Anita Rao, address: anita@lotus-interiors.example, aliases: [anita, my manager] }
+  - { id: kiran, name: Kiran Shah, address: kiran@greenleaf-tiles.example, aliases: [kiran, tile supplier, greenleaf] }
+
+resources:
+  - { id: brightcoat-quote, name: BrightCoat quote, aliases: [paint supplier's quote, paint quote, the quote, quote, brightcoat-quote.pdf], data_class: internal }
+  - { id: tile-quote, name: Greenleaf tile quote, aliases: [tile quote, greenleaf-quote.pdf], data_class: internal }
+  - { id: customer-list, name: Customer list, aliases: [customer list, customers.csv, client list], data_class: confidential }
+  - { id: payroll-2026, name: Payroll 2026, aliases: [payroll, salaries, payroll-2026.xlsx], data_class: confidential }
+  - { id: project-plan, name: Office refresh plan, aliases: [project plan, refresh plan, plan.docx], data_class: internal }
+
+# Organisation rule: an email leaving the company is confirmed by the employee, bound to that exact email.
+ask_before:
+  - { action: send, when: external_recipient }
+  - { action: share, when: external_recipient }

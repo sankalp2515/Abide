@@ -1,0 +1,36 @@
+# Policy for the reference research agent.
+agent: research-agent
+version: "1"
+mode: enforce            # monitor | enforce
+task_scope: "Answer research questions using the user's files, email, the customer database and approved web sources."
+tools:
+  read_file:    { risk: low,    failure: open, path_arg: path }
+  read_email:   { risk: low,    failure: open }
+  web_fetch:    { risk: medium, failure: open, allowed_domains: [fixtures.test], url_arg: url }
+  query_db:     { risk: medium, failure: closed, pinned: [customer_id] }
+  write_file:   { risk: medium, failure: closed, path_arg: path }
+  send_message: { risk: high,   failure: closed, escalate_if_uncertain: true,
+                  allowed_recipients: ["@example-corp.test"], recipient_arg: to,
+                  intent_terms: [send, email, mail, reply, forward, message, notify, share] }
+contract:                # D-064 intent contract: what the user authorised, compiled from the user's own words
+  mode: enforce
+  require_mention: [send, submit, purchase, delete]   # high-impact: only when the user asks for it
+  out_of_scope: escalate   # escalate | block
+unknown_tools: block
+sensitive_data:
+  patterns: [api_key, credential, customer_record]
+  canaries: [from_env]
+  drop_non_visible: true
+thresholds:
+  neutralise: 0.6
+  block: 0.85
+  escalate_band: [0.5, 0.85]
+  judge_untrusted: always      # high-risk tools (send_message): every untrusted document gets a judge assessment
+session:
+  risk_decay_per_turn: 0.2
+  block_at: 1.5
+  escalate_at: 0.8
+budgets:
+  daily_tokens_tier2: 200000
+  on_exceeded: rules_only_hold_high_risk
+decision_model: generative_free

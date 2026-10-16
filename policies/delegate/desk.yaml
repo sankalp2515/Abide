@@ -1,0 +1,40 @@
+# IntentSeal Delegate demo workspace 2: the customer-support desk of Acme Home, an online home-goods store.
+# Same product, different business: tools, records and words come from this file only.
+workspace: acme-desk
+agent_id: delegate-workspace
+org_domains: [acmehome.example]
+confidential_classes: [confidential]
+
+tools:
+  list_tickets:     { action: read, description: "List open support tickets" }
+  read_ticket:      { action: read, args: [id], description: "Read one ticket" }
+  read_attachment:  { action: read, resource_args: [name], description: "Open a file attached to a ticket" }
+  lookup_order:     { action: read, resource_args: [order_id], description: "Look up an order" }
+  export_customers: { action: read, resource_args: [name], description: "Export the customer list" }
+  issue_refund:     { action: purchase, resource_args: [order_id], amount_args: [amount], content_args: [note],
+                      description: "Refund an order to the original payment method" }
+  reply_customer:   { action: send, recipient_args: [to], resource_args: [attachments], content_args: [subject, body],
+                      description: "Email a customer" }
+
+# Orders are too many to list: an order is named by the word "order" and its number ("order #4521").
+records:
+  - { type: order, words: [order, ord], pattern: "\\d{4,6}" }
+
+# "The customer" is whoever owns the order the employee named, taken from the order system (never from the ticket).
+contacts:
+  - { id: customer, name: the customer, address: "@record-owner", aliases: [customer, the buyer] }
+  - { id: lead, name: Farah Khan, address: farah@acmehome.example, aliases: [farah, my team lead] }
+
+# Stand-in for the order system's lookup (in production: a CRM / order-database call).
+record_owners:
+  "order:4521": meera@mail.example
+  "order:9921": kabir@mail.example
+
+resources:
+  - { id: customer-export, name: Customer list export, aliases: [customer list, customers.csv, all customers], data_class: confidential }
+  - { id: damage-photo, name: Damage photo, aliases: [photo.pdf, damage photo], data_class: internal }
+
+verbs:
+  purchase: [refund, reimburse, credit back]
+
+ask_before: []

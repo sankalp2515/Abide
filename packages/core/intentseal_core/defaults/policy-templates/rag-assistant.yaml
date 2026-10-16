@@ -1,0 +1,27 @@
+# Template: a knowledge assistant that answers from retrieved documents (RAG) and the user's files, may read web pages
+# and APIs, and can write notes and send messages. A RAG chatbot with no tools needs only the policy's thresholds:
+# its retrieved documents are inspected whether they arrive through the SDK (source "rag") or through the proxy
+# inside <context>…</context> or <document>…</document> tags (D-050).
+# Rename the tools to your agent's real tool names; any tool not listed is blocked in enforce mode
+# (monitor mode logs it instead: watch the Decisions page for "tool-not-allowed", then add the tool here).
+title: Knowledge assistant (RAG)
+description: Answers from your knowledge base, files, email, web pages and APIs; writes notes; sends messages to your own domain only.
+policy:
+  mode: monitor
+  task_scope: "Answer the user's questions from the knowledge base, the user's files and email, and web sources."
+  tools:
+    search_knowledge: { risk: low,    failure: open }
+    list_files:       { risk: low,    failure: open, path_arg: folder }
+    read_file:        { risk: low,    failure: open, path_arg: path }
+    ocr_image:        { risk: low,    failure: open, path_arg: path }
+    read_email:       { risk: low,    failure: open }
+    # Reading any site is normal for a research assistant; list sites here to also stop data leaving through URLs
+    # (protected values in a URL are blocked either way by the outbound secret scan).
+    web_fetch:        { risk: medium, failure: open, allowed_domains: ["*"], url_arg: url }
+    call_api:         { risk: medium, failure: open, allowed_domains: ["*"], url_arg: url }
+    write_file:       { risk: medium, failure: closed, path_arg: path }
+    send_message:     { risk: high,   failure: closed, escalate_if_uncertain: true,
+                        allowed_recipients: ["@example.com"], recipient_arg: to,
+                        intent_terms: [send, email, mail, reply, forward, message, notify, share] }
+  unknown_tools: block
+  thresholds: { judge_untrusted: always }

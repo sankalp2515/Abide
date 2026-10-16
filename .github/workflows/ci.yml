@@ -1,0 +1,80 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+jobs:
+  python:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+          cache: pip
+          cache-dependency-path: requirements.lock
+      - name: Install
+        run: |
+          pip install -c requirements.lock -e "packages/core[engine,classifiers,ocr,postgres]" -e packages/sdk -e services/gateway -e eval openai pytest pytest-asyncio ruff
+          pip install "google-adk==2.12.0"
+      - name: Lint
+        run: ruff check .
+      - name: Tests
+        run: pytest -q
+      - name: Evaluation (two businesses, local)
+        run: python -m intentseal_eval.delegate
+
+  console:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    defaults:
+      run:
+        working-directory: apps/console
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+          cache-dependency-path: apps/console/package-lock.json
+      - run: npm ci --no-audit --no-fund
+      - run: npx tsc --noEmit
+      - run: npm test
+      - run: npm run build
+
+  docker:
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    needs: [python, console]
+    steps:
+      - uses: actions/checkout@v4
+      - name: Build and start the stack
+        run: docker compose up --build -d --wait --wait-timeout 600
+      - name: Smoke test
+        run: |
+          curl -fsS http://127.0.0.1:8000/readyz
+          curl -fsS http://127.0.0.1:8000/v1/delegate-eval -H "Authorization: Bearer local-public-key" > /dev/null
+          curl -fsS -X POST http://127.0.0.1:8000/v1/delegations -H "Authorization: Bearer local-project-key" \
+            -H "Content-Type: application/json" \
+            -d '{"request": "Read the paint supplier quote and write a reply. Do not send it yet.", "workspace": "workspace"}'
+          for domain in office desk; do
+            curl -fsS -X POST http://127.0.0.1:8000/v1/delegate-demo -H "Authorization: Bearer local-project-key" \
+              -H "Content-Type: application/json" -d "{\"domain\": \"$domain\"}" > /dev/null
+          done
+          docker compose exec -T gateway python -c "import importlib, pkgutil, intentseal_gateway, intentseal_core; [importlib.import_module(m.name) for p in (intentseal_gateway, intentseal_core) for m in pkgutil.walk_packages(p.__path__, p.__name__ + '.') if not m.name.endswith('__main__')]"
+      - name: Logs on failure
+        if: failure()
+        run: docker compose logs --tail 200
+      - name: Stop
+        if: always()
+        run: docker compose down -v
