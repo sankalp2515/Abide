@@ -44,11 +44,11 @@ Method and limits: [EVAL.md](EVAL.md).
 
 | Item | Status |
 |---|---|
-| Gemini drafts the permission card (role `contract`) | done; verified live with an AI Studio key |
+| Gemini drafts the permission card (role `contract`) | done; verified live (AI Studio key, then Vertex AI) |
 | Gemini writes the work receipt (role `receipt`) | done; verified live |
 | Google ADK connector (`before_tool_callback`, `after_tool_callback`) | done; runtime test with a stand-in model |
-| Live Gemini agent team run | wired; needs Vertex AI or a billed key (free tier: 20 requests per model per day) |
-| Cloud Run deployment (Cloud Build, Artifact Registry, Secret Manager) | files ready; needs a dedicated Google Cloud project |
+| Live Gemini agent team run | done on Vertex AI (0.2.0, below) |
+| Cloud Run deployment (Cloud Build, Artifact Registry, Secret Manager) | files ready and keyless; deploy after the frontend redesign |
 | Cloud SQL for PostgreSQL on Cloud Run | next; the store already runs on PostgreSQL |
 
 ## Google integration validation — 0.2.0 (17 Oct 2026, project `intentseal`, not deployed)
