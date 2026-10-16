@@ -85,6 +85,9 @@ class DemoStart(BaseModel):
     attack: str = Field("hidden-pdf", pattern="^(hidden-pdf|email-body|none)$")
     firewall: bool = True
     domain: str = Field("office", pattern="^(office|desk)$")
+    agents: str = Field("auto", pattern="^(auto|gemini|scripted)$")   # auto: live Gemini agents when reachable
+    compromised: bool = False      # live agents act on instructions in what they read (a hijacked agent)
+    attack_text: str = Field("", max_length=2000)   # your own attack, planted where `attack` says (pdf or email)
 
 
 WORKSPACES = ("workspace", "desk")      # policies/delegate/<name>.yaml: one service per business, one store
@@ -99,11 +102,14 @@ def _services(request: Request) -> dict[str, DelegateService]:
         roles = getattr(getattr(router_, "settings", None), "roles", {}) or {}
         drafter = ModelDrafter(router_) if "contract" in roles else None
         writer = ModelWriter(router_) if "receipt" in roles else None
+        from intentseal_core.delegate.model_armor import ModelArmor
+        armor = ModelArmor.from_env()           # INTENTSEAL_MODEL_ARMOR_TEMPLATE: Google Model Armor as a second screen
         svcs = app.state.delegate_services = {
-            name: DelegateService(load_delegate_policy(name), engine=engine, drafter=drafter, writer=writer)
+            name: DelegateService(load_delegate_policy(name), engine=engine, drafter=drafter, writer=writer,
+                                  model_armor=armor)
             for name in WORKSPACES}
-        log.info("delegate: drafter=%s writer=%s", drafter.name if drafter else "rules",
-                 writer.name if writer else "template")
+        log.info("delegate: drafter=%s writer=%s model_armor=%s", drafter.name if drafter else "rules",
+                 writer.name if writer else "template", armor.template if armor else "off")
     return svcs
 
 
@@ -276,8 +282,12 @@ async def _demo_state(request: Request, wf: str) -> dict[str, Any]:
         raise HTTPException(404, "unknown demo workflow")
     svc = service(request, wf)
     out = svc.state(wf) | {"demo": demo.view()}
-    if demo.phase != "contract":
-        out["report"] = await svc.report(wf)
+    if demo.phase == "worked":                  # written once per new receipt, not on every poll (a model call)
+        n = len(out["receipts"])
+        cached = getattr(demo, "report_cache", None)
+        if cached is None or cached[0] != n:
+            demo.report_cache = (n, await svc.report(wf))
+        out["report"] = demo.report_cache[1]
     return out
 
 
@@ -291,7 +301,8 @@ async def demo_start(body: DemoStart, request: Request, p: Principal = require("
     demos = _demos(request)
     while len(demos) >= 50:                     # demo sandboxes are kept in memory: bounded
         demos.pop(next(iter(demos)))
-    demos[c.workflow_id] = LiveDemo(svc, c.workflow_id, body.attack, body.firewall, body.domain)
+    demos[c.workflow_id] = LiveDemo(svc, c.workflow_id, body.attack, body.firewall, body.domain, body.agents,
+                                    body.compromised, body.attack_text.strip() or None)
     return await _demo_state(request, c.workflow_id)
 
 

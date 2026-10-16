@@ -261,8 +261,15 @@ def _anthropic() -> Any:
     return AnthropicAdapter()
 
 
+def _vertex() -> Any:
+    from .vertex_adapter import VertexOpenAIAdapter   # imported lazily: google-auth is an optional extra
+
+    return VertexOpenAIAdapter()
+
+
 _REGISTRY: dict[str, Callable[[], Any]] = {
     "openai_compatible": OpenAICompatibleAdapter,
+    "vertex_openai": _vertex,
     "anthropic": _anthropic,
     "jev": JevAdapter,
 }

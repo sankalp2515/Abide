@@ -211,7 +211,7 @@ Rules:
 class ModelDrafter:
     """Any chat model behind the router role `contract`. Its output is a proposal; `validate` decides.
 
-    The employee is waiting: the model gets `timeout_s` (default 8 s), and after a failure it is skipped for
+    The employee is waiting: the model gets `timeout_s` (default 12 s), and after a failure it is skipped for
     `cooldown_s` (default 120 s) so the word rules answer at once instead of waiting on a model that is down (K5)."""
 
     def __init__(self, router: Any, role: str = "contract", timeout_s: float | None = None,
@@ -219,7 +219,7 @@ class ModelDrafter:
         import os
         self.router, self.role = router, role
         self.name = f"model:{role}"
-        self.timeout_s = timeout_s or float(os.environ.get("INTENTSEAL_DRAFTER_TIMEOUT_S") or 8)
+        self.timeout_s = timeout_s or float(os.environ.get("INTENTSEAL_DRAFTER_TIMEOUT_S") or 12)
         self.cooldown_s = cooldown_s if cooldown_s is not None else float(
             os.environ.get("INTENTSEAL_DRAFTER_COOLDOWN_S") or 120)
         self.down_until = 0.0

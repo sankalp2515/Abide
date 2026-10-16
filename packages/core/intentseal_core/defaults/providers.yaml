@@ -38,6 +38,16 @@ providers:
     timeout_s: 30
     limits: { rpm: 30, tpm: 8000 }   # Groq free tier: per model (also 1K req and 200K tokens per day)
 
+  vertex:                          # Gemini on Vertex AI: Google credentials (Cloud Run identity or ADC), no API key
+    type: vertex_openai
+    enabled: true
+    google_auth: true              # active when GOOGLE_CLOUD_PROJECT is set (GOOGLE_CLOUD_LOCATION, default global)
+    base_url: https://aiplatform.googleapis.com/v1/projects/{project}/locations/{location}/endpoints/openapi
+    priority: 1
+    timeout_s: 45
+    limits: { rpm: 60 }
+    budget: { daily_tokens: 2000000 }   # spending guard: the router skips Vertex for the rest of the day past this
+
   gemini:
     type: openai_compatible
     enabled: true

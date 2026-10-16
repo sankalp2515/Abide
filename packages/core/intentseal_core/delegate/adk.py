@@ -22,15 +22,22 @@ from typing import Any, Awaitable, Callable
 AskHandler = Callable[[dict[str, Any]], Awaitable[bool]]
 
 
+def _args(args: dict[str, Any] | None) -> dict[str, Any]:
+    """Tool parameters as the policy names them: Python tools spell a reserved word with a trailing "_" (with_)."""
+    return {(k[:-1] if k.endswith("_") and not k.endswith("__") else k): v for k, v in dict(args or {}).items()}
+
+
 def _key(tool: str, args: dict[str, Any]) -> str:
     return tool + ":" + json.dumps(args, sort_keys=True, default=str)
 
 
 class AdkGuard:
     def __init__(self, svc: Any, workflow_id: str, agent_name: str, on_ask: AskHandler | None = None,
-                 inspect: bool | None = None) -> None:
+                 inspect: bool | None = None, source_of: Callable[[str, str | None], str] | None = None,
+                 label_of: Callable[[str, dict[str, Any], str | None], str | None] | None = None) -> None:
         self.svc, self.wf, self.agent = svc, workflow_id, agent_name
         self.on_ask, self.inspect = on_ask, inspect
+        self.source_of, self.label_of = source_of, label_of    # how the business names what was read (optional)
         self._receipts: dict[str, str] = {}
         self.sources: list[str] = []                 # receipts of content this agent read (for the handoff seal)
         self.waiting: dict[str, tuple[str, dict[str, Any]]] = {}
@@ -41,7 +48,7 @@ class AdkGuard:
         return spec is not None and spec.action == "read"
 
     async def before_tool(self, tool: Any, args: dict[str, Any], tool_context: Any = None) -> dict[str, Any] | None:
-        name, args = tool.name, dict(args or {})
+        name, args = tool.name, _args(args)
         r = await self.svc.check(self.wf, self.agent, name, args)
         if r["decision"] == "ask":
             if self.on_ask is None:
@@ -65,7 +72,7 @@ class AdkGuard:
 
     async def after_tool(self, tool: Any, args: dict[str, Any], tool_context: Any,
                          tool_response: Any) -> dict[str, Any] | None:
-        name, args = tool.name, dict(args or {})
+        name, args = tool.name, _args(args)
         rid = self._receipts.pop(_key(name, args), None)
         if rid is None:                               # the tool did not run through the gate (stopped or waiting)
             return None
@@ -82,10 +89,12 @@ class AdkGuard:
             content = str(resp.get("result", resp.get("content", "")))
         spec = self.svc.policy.tools[name]
         res = next((r_ for a in spec.resource_args if (r_ := self.svc.policy.resource(str(args.get(a, ""))))), None)
-        source = ("pdf" if (filename or "").endswith(".pdf") else
-                  "email" if name in ("read_email", "read_ticket") else f"tool:{name}")
+        source = self.source_of(name, filename) if self.source_of else (
+            "pdf" if (filename or "").endswith(".pdf") else
+            "email" if name in ("read_email", "read_ticket") else f"tool:{name}")
+        label = self.label_of(name, args, filename) if self.label_of else None
         seen = await self.svc.read(self.wf, self.agent, content, source, filename=filename, inspect=self.inspect,
-                                   resource=res.id if res else None)
+                                   resource=res.id if res else None, label=label)
         self.sources.append(seen["receipt"])
         if seen["flagged"]:
             self.events[-1]["note"] = "Hidden or suspicious instructions removed before the agent read it"
@@ -106,3 +115,14 @@ class AdkGuard:
             if e["outcome"] == "waiting" and e["tool"] == name and e["args"] == args:
                 e["outcome"] = "asked->ran"
         return out
+
+    def decline(self, approval_id: str) -> bool:
+        """The employee said no to a waiting call: it never runs."""
+        item = self.waiting.pop(approval_id, None)
+        if item is None:
+            return False
+        name, args = item
+        for e in self.events:
+            if e["outcome"] == "waiting" and e["tool"] == name and e["args"] == args:
+                e["outcome"] = "declined"
+        return True

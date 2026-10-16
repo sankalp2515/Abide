@@ -321,6 +321,7 @@ export interface DState {
   workflow: { id: string; owner: string; created: number };
   contract: DContract; versions: DContract[]; receipts: DReceipt[]; approvals: DApproval[];
   demo?: { domain?: string; attack: string; phase: string; firewall: boolean; events: DEvent[]; waiting: string[];
+           agents?: "gemini" | "scripted"; agents_note?: string | null; error?: string | null; compromised?: boolean; custom_attack?: boolean;
            workspace: { drafts: Record<string, unknown>[]; sent: Record<string, unknown>[]; refunds?: Record<string, unknown>[]; executed: { tool: string; args: Record<string, unknown> }[] } };
   report?: DReport;
 }
@@ -333,8 +334,9 @@ export interface DEval { created: string; method: string; arms: Record<string, D
 
 export const delegate = {
   evaluation: () => call<DEval>("/v1/delegate-eval"),
-  start: (key: string, request: string, attack: string, firewall: boolean, domain: "office" | "desk" = "office") =>
-    call<DState>("/v1/delegate-demo", { method: "POST", body: JSON.stringify({ request, attack, firewall, domain }) }, key),
+  start: (key: string, request: string, attack: string, firewall: boolean, domain: "office" | "desk" = "office",
+          compromised = false, attack_text = "") =>
+    call<DState>("/v1/delegate-demo", { method: "POST", body: JSON.stringify({ request, attack, firewall, domain, compromised, attack_text }) }, key),
   get: (key: string, wf: string) => call<DState>(`/v1/delegate-demo/${encodeURIComponent(wf)}`, undefined, key),
   confirm: (key: string, wf: string, hash: string, accept: string[] = []) =>
     call<DState>(`/v1/delegate-demo/${encodeURIComponent(wf)}/confirm`, { method: "POST", body: JSON.stringify({ hash, accept }) }, key),

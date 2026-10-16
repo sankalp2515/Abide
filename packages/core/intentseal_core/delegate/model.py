@@ -45,6 +45,12 @@ def norm(text: str) -> str:
     return re.sub(r"\s+", " ", text).strip().casefold()
 
 
+def _loose(name: str) -> str:
+    """A file name without extension or separators: "Customer_List.csv" -> "customer list"."""
+    stem = re.sub(r"\.(csv|xlsx?|docx?|pdf|txt|json)$", "", norm(name))
+    return re.sub(r"[\s_\-]+", " ", stem).strip()
+
+
 # ---- workspace policy ----------------------------------------------------------------------------------------------
 
 class ToolSpec(BaseModel):
@@ -129,6 +135,10 @@ class DelegatePolicy(BaseModel):
         k = norm(key).lstrip("./").strip()
         found = next((r for r in self.resources if k in (r.id.lower(), norm(r.name), *(norm(a) for a in r.aliases))),
                      None)
+        if found is None:      # a file name an agent made up: "customer_list.csv" is still the customer list
+            loose = _loose(k)
+            found = next((r for r in self.resources
+                          if loose in {_loose(x) for x in (r.id, r.name, *r.aliases)}), None) if loose else None
         return found or self.record(k)
 
     def action_words(self, action: str) -> list[str]:

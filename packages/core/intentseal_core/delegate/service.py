@@ -92,8 +92,9 @@ def for_agent(reason: str) -> str:
 class DelegateService:
     def __init__(self, policy: DelegatePolicy, engine: Any = None, store: Store | None = None,
                  drafter: Drafter | None = None, writer: Writer | None = None, secret: bytes | None = None,
-                 inspect_content: bool = True) -> None:
+                 inspect_content: bool = True, model_armor: Any = None) -> None:
         self.policy, self.engine = policy, engine
+        self.model_armor = model_armor        # optional second screen (Google Model Armor) on what agents receive
         self.store = store or (engine.store if engine is not None else Store(":memory:"))
         self.store.ensure_schema(SCHEMA)
         self.drafter, self.writer = drafter, writer
@@ -328,11 +329,22 @@ class DelegateService:
                     if again.decision.value == "ALLOW":
                         cleaned, decision, hidden_dropped = again.cleaned_content, "NEUTRALISE", True
                         rule_ = "drop-non-visible (visible text re-inspected)"
+        armor = None
+        if self.model_armor is not None and inspect is not False and self.inspect_content and decision != "BLOCK":
+            screen = await self.model_armor.screen(cleaned)
+            armor = screen.as_dict()
+            if screen.match:          # Model Armor only adds: what it flags is held, what the engine held stays held
+                flagged, decision = True, "BLOCK"
+                labels = [*labels, *(f"model-armor:{f}" for f in screen.filters)]
+                rule_ = "model-armor: " + ", ".join(screen.filters)
+                cleaned = "[Content held by the security policy: Google Model Armor found " + (
+                    "a prompt-injection attempt" if "pi_and_jailbreak" in screen.filters else "a malicious link") + " in it]"
         label = label or (f"{source}: {filename}" if filename else source)
         rid = self._receipt(workflow_id, "inspect", agent=agent, decision=decision.lower(),
                             reason="content inspected before the agent read it",
                             data={"source": label, "filename": filename, "flagged": flagged, "labels": labels,
-                                  "rule": rule_, "hidden_dropped": hidden_dropped, "chars": len(raw)})
+                                  "rule": rule_, "hidden_dropped": hidden_dropped, "chars": len(raw),
+                                  **({"model_armor": armor} if armor is not None else {})})
         self.store.execute("INSERT INTO delegate_content VALUES (?,?,?,?,?,?,?)",
                            (workflow_id, rid, label, 0, int(flagged), json.dumps(labels), raw))
         self._tracker(workflow_id).observe(raw, rid, label, False, flagged)

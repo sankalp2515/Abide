@@ -18,7 +18,7 @@ accepted. "Fixed" items have tests (`tests/test_delegate_*.py`).
 | G9 | API design | "Not the delegating person" returned 409 | 403 (`DelegateForbidden`) | `test_wrong_person_gets_403` |
 | G10 | Frontend | Console read state with the public key | Uses the signed-in employee's key | walkthrough replay |
 | G11 | AI engineering | A judge that blocked a whole PDF for its hidden line cost the legitimate quote | Visible text is re-inspected alone and delivered when clean (any hold rule) | `test_file_held_for_hidden_text_still_gives_its_visible_text` |
-| G12 | AI engineering / UX | Slow or exhausted model made the card wait ~10 s | 8 s timeout, 2-minute cooldown after a failure | `test_slow_model_is_cut_off_then_skipped` |
+| G12 | AI engineering / UX | Slow or exhausted model made the card wait ~10 s | 12 s timeout (8 s originally; raised for Vertex AI, where a full card takes 3–9 s), 2-minute cooldown after a failure | `test_slow_model_is_cut_off_then_skipped` |
 | G13 | Architecture | Sandbox demo routes always on | `INTENTSEAL_DELEGATE_DEMO=0` turns them off | `test_demo_can_be_switched_off` |
 | G15 | DevOps | The image had never been built; a dependency (reportlab, for the sandbox PDFs) only arrived through a removed package | Docker Compose stack (gateway + PostgreSQL) built and checked end to end; reportlab declared by the gateway; CI imports every module in the image and starts both demos | `.github/workflows/ci.yml` (docker job) |
 | G14 | UX / Accessibility (WCAG) | No announcement of progress for screen readers; jargon on screen | `aria-live` status; plain labels; details folded (K1–K11) | walkthrough |

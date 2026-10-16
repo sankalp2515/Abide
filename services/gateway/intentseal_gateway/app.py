@@ -109,6 +109,10 @@ def create_app(engine: Engine | None = None, reports_dir: Path | None = None) ->
 
             from intentseal.guard import _warm_up
             await asyncio.to_thread(_warm_up)
+            from intentseal_core.llm.vertex_adapter import warm as _warm_vertex
+            await asyncio.to_thread(_warm_vertex)   # Gemini on Vertex AI: the first access token, before any user waits
+            from .delegate_demo.live import warm_agents
+            await asyncio.to_thread(warm_agents)    # live Gemini agents: load Google ADK now, not on the first task
         app.state.keys = KeyRing()
         # Ephemeral key for the demo runner's own calls to the proxy (S9); random per process, never exposed.
         import secrets as _secrets

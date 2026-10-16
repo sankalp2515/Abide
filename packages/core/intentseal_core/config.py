@@ -127,7 +127,7 @@ def load_providers(path: Path | None = None) -> dict[str, ProviderConfig]:
         known = {
             "type", "enabled", "base_url", "keys", "priority", "timeout_s", "connect_timeout_s",
             "retries", "backoff_base_s", "backoff_max_s", "circuit_failures", "circuit_open_s",
-            "key_rotation", "limits", "budget", "extra_headers", "no_auth",
+            "key_rotation", "limits", "budget", "extra_headers", "no_auth", "google_auth",
         }
         out[name] = ProviderConfig(
             name=name,
@@ -135,7 +135,10 @@ def load_providers(path: Path | None = None) -> dict[str, ProviderConfig]:
             enabled=bool(merged.get("enabled", True)),
             base_url=str(merged.get("base_url", "")).rstrip("/"),
             # `no_auth: true` (local servers such as Ollama or vLLM): one empty key, so the provider is usable.
+            # `google_auth: true` (Vertex AI): Google credentials, no key; usable once GOOGLE_CLOUD_PROJECT is set.
             keys=([ApiKey(f"{name}#local", "")] if merged.get("no_auth")
+                  else ([ApiKey(f"{name}#adc", "")] if os.environ.get("GOOGLE_CLOUD_PROJECT", "").strip() else [])
+                  if merged.get("google_auth")
                   else load_keys(name, keys_cfg.get("env_prefix"), keys_cfg.get("env_list"))),
             priority=int(merged.get("priority", 50)),
             timeout_s=float(merged.get("timeout_s", 30)),

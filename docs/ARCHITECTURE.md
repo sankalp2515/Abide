@@ -6,7 +6,7 @@
 
 | # | Component | Module | Responsibility |
 |---|---|---|---|
-| ① | Contract compiler | `intentseal_core/delegate/compiler.py` | Gemini (`ModelDrafter`, router role `contract`) drafts clauses, each with an effect (permit or prohibit), an action, values and a quote. The word-rule drafter (`RuleDrafter`) fills actions the model missed and stands in when the model is unavailable (8 s timeout, 120 s cooldown). |
+| ① | Contract compiler | `intentseal_core/delegate/compiler.py` | Gemini (`ModelDrafter`, router role `contract`) drafts clauses, each with an effect (permit or prohibit), an action, values and a quote. The word-rule drafter (`RuleDrafter`) fills actions the model missed and stands in when the model is unavailable (12 s timeout, 120 s cooldown). |
 | ② | Grounding validator | `compiler.py` (`validate`) | Keeps a clause only if its quote is in the employee's words, an action word is present (used as a verb for actions that leave), and every value appears in the quote and resolves from the trusted directory. Pasted or quoted material is masked first and grants nothing. |
 | ③ | Permission card | `delegate/model.py`, `service.py` | Hash-chained card versions. Confirm and amend require the card hash and the person who started the task (or an admin). |
 | ④ | Content filter | IntentSeal engine (`intentseal_core`) | Rules, a local classifier and an optional judge model inspect everything agents read. Hidden instructions are removed; the text is tracked as untrusted. A file held only for hidden text is re-inspected on its visible text and delivered when clean. |
