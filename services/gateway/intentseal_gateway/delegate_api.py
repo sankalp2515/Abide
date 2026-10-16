@@ -11,6 +11,9 @@ Scopes: reading needs any key; acting needs a project key (an employee's app or 
 from __future__ import annotations
 
 import base64
+import json
+import time
+from collections import OrderedDict
 import logging
 from typing import Any
 
@@ -32,7 +35,7 @@ router = APIRouter(tags=["delegate"])
 class StartRequest(BaseModel):
     request: str = Field(min_length=1, max_length=4000)
     owner: str = Field("employee", max_length=120)
-    workspace: str = Field("workspace", pattern="^(workspace|desk)$")
+    workspace: str = Field("workspace", pattern=r"^[a-z0-9][a-z0-9-]{1,39}$")   # a built-in business or your own
 
 
 class ConfirmRequest(BaseModel):
@@ -104,6 +107,7 @@ def _services(request: Request) -> dict[str, DelegateService]:
         writer = ModelWriter(router_) if "receipt" in roles else None
         from intentseal_core.delegate.model_armor import ModelArmor
         armor = ModelArmor.from_env()           # INTENTSEAL_MODEL_ARMOR_TEMPLATE: Google Model Armor as a second screen
+        app.state.delegate_parts = (engine, drafter, writer, armor)
         svcs = app.state.delegate_services = {
             name: DelegateService(load_delegate_policy(name), engine=engine, drafter=drafter, writer=writer,
                                   model_armor=armor)
@@ -113,8 +117,62 @@ def _services(request: Request) -> dict[str, DelegateService]:
     return svcs
 
 
+# ---- businesses registered over the API ---------------------------------------------------------------------------
+# A company describes its tools, contacts, files and rules once; its employees' agents then work under Delegate like
+# the built-in sandboxes. A registered business is private to the key that registered it (and admins).
+
+WORKSPACE_SCHEMA = ["""CREATE TABLE IF NOT EXISTS delegate_workspaces (id TEXT PRIMARY KEY, owner TEXT, policy TEXT,
+                       description TEXT, created REAL)"""]
+MAX_WORKSPACES_PER_KEY = 20
+CUSTOM_CACHE = 64
+
+
+class WorkspaceRequest(BaseModel):
+    id: str = Field(pattern=r"^[a-z0-9][a-z0-9-]{2,39}$")
+    description: str = Field("", max_length=300)
+    policy: dict[str, Any]
+
+
+def _store(request: Request) -> Any:
+    st = next(iter(_services(request).values())).store
+    if not getattr(request.app.state, "delegate_ws_schema", False):
+        st.ensure_schema(WORKSPACE_SCHEMA)
+        request.app.state.delegate_ws_schema = True
+    return st
+
+
+def _reserved(request: Request) -> set[str]:
+    return {*WORKSPACES, *(s.policy.workspace for s in _services(request).values())}
+
+
+def _custom_row(request: Request, wid: str) -> dict[str, Any] | None:
+    rows = _store(request).query("SELECT * FROM delegate_workspaces WHERE id = ?", (wid,))
+    return rows[0] if rows else None
+
+
+def _custom_service(request: Request, wid: str) -> DelegateService | None:
+    from intentseal_core.delegate.model import custom_delegate_policy
+    cache = getattr(request.app.state, "delegate_custom", None)
+    if cache is None:
+        cache = request.app.state.delegate_custom = OrderedDict()
+    if wid in cache:
+        cache.move_to_end(wid)
+        return cache[wid]
+    row = _custom_row(request, wid)
+    if row is None:
+        return None
+    engine, drafter, writer, armor = request.app.state.delegate_parts
+    svc = DelegateService(custom_delegate_policy(json.loads(row["policy"]), wid), engine=engine, drafter=drafter,
+                          writer=writer, model_armor=armor)
+    cache[wid] = svc
+    while len(cache) > CUSTOM_CACHE:
+        cache.popitem(last=False)
+    return svc
+
+
 def service(request: Request, wf: str | None = None, workspace: str | None = None) -> DelegateService:
-    """The service for a business (`workspace`: a policy file name), or for the business a workflow belongs to."""
+    """The service for a business (`workspace`: a built-in policy file name or a registered business id), or for the
+    business a workflow belongs to."""
     svcs = _services(request)
     if wf is not None:
         any_svc = next(iter(svcs.values()))
@@ -123,7 +181,70 @@ def service(request: Request, wf: str | None = None, workspace: str | None = Non
             for svc in svcs.values():
                 if svc.policy.workspace == rows[0]["workspace"]:
                     return svc
-    return svcs.get(workspace or "workspace") or svcs["workspace"]
+            custom = _custom_service(request, rows[0]["workspace"])
+            if custom is not None:
+                return custom
+    if workspace is None or workspace in svcs:
+        return svcs.get(workspace or "workspace") or svcs["workspace"]
+    custom = _custom_service(request, workspace)
+    if custom is None:
+        raise HTTPException(404, "unknown workspace")
+    return custom
+
+
+def _may_use(request: Request, workspace: str, p: Principal) -> None:
+    """Built-in sandboxes are open to every project key; a registered business only to its owner and admins."""
+    if workspace in WORKSPACES or p.scope == "admin":
+        return
+    row = _custom_row(request, workspace)
+    if row is None or row["owner"] != p.name:
+        raise HTTPException(404, "unknown workspace")
+
+
+@router.post("/v1/delegate-workspaces", status_code=201)
+async def register_workspace(body: WorkspaceRequest, request: Request,
+                             p: Principal = require("project")) -> dict[str, Any]:
+    """Register (or replace) your business: tools and their fields, contacts, files, records and company rules."""
+    from intentseal_core.delegate.model import custom_delegate_policy
+    if body.id in _reserved(request):
+        raise HTTPException(409, "that id belongs to a built-in sandbox")
+    try:
+        policy = custom_delegate_policy(body.policy, body.id)
+    except (ValueError, TypeError) as e:          # pydantic's ValidationError is a ValueError
+        raise HTTPException(422, f"invalid policy: {str(e)[:400]}") from None
+    st, existing = _store(request), _custom_row(request, body.id)
+    if existing is not None and existing["owner"] != p.name and p.scope != "admin":
+        raise HTTPException(409, "that id is taken")
+    if existing is None and len(st.query("SELECT id FROM delegate_workspaces WHERE owner = ?", (p.name,))) \
+            >= MAX_WORKSPACES_PER_KEY:
+        raise HTTPException(429, f"at most {MAX_WORKSPACES_PER_KEY} businesses per key")
+    stored = json.dumps(body.policy, ensure_ascii=False)
+    if existing is None:
+        st.execute("INSERT INTO delegate_workspaces VALUES (?,?,?,?,?)",
+                   (body.id, p.name, stored, body.description, time.time()))
+    else:
+        st.execute("UPDATE delegate_workspaces SET policy = ?, description = ? WHERE id = ?",
+                   (stored, body.description, body.id))
+    getattr(request.app.state, "delegate_custom", {}).pop(body.id, None)
+    return {"id": body.id, "tools": {n: t.action for n, t in policy.tools.items()},
+            "contacts": len(policy.contacts), "resources": len(policy.resources), "records": len(policy.records)}
+
+
+@router.get("/v1/delegate-workspaces")
+async def list_workspaces(request: Request, p: Principal = require("project")) -> list[dict[str, Any]]:
+    out: list[dict[str, Any]] = [{"id": name, "builtin": True, "business": svc.policy.workspace}
+                                 for name, svc in _services(request).items()]
+    admin = p.scope == "admin"
+    rows = _store(request).query("SELECT id, description FROM delegate_workspaces"
+                                 + ("" if admin else " WHERE owner = ?"), () if admin else (p.name,))
+    return out + [{"id": r["id"], "builtin": False, "description": r["description"]} for r in rows]
+
+
+@router.get("/v1/delegate-workspaces/{wid}")
+async def get_workspace(wid: str, request: Request, p: Principal = require("project")) -> dict[str, Any]:
+    _may_use(request, wid, p)
+    svc = service(request, workspace=wid)
+    return {"id": wid, "builtin": wid in WORKSPACES, "policy": svc.policy.model_dump()}
 
 
 def actor(request: Request, wf: str, p: Principal) -> str:
@@ -161,6 +282,7 @@ def _err(e: Exception) -> HTTPException:
 
 @router.post("/v1/delegations")
 async def start(body: StartRequest, request: Request, p: Principal = require("project")) -> dict[str, Any]:
+    _may_use(request, body.workspace, p)
     svc = service(request, workspace=body.workspace)
     c = await svc.start(body.owner, body.request, principal=p.name)
     return svc.state(c.workflow_id)
@@ -353,3 +475,15 @@ async def delegate_eval(request: Request) -> dict[str, Any]:
     arms = {name: {k: v for k, v in arm["summary"].items() if k != "by_attack_type"}
             for name, arm in rep.get("arms", {}).items()}
     return {"created": rep.get("created"), "method": rep.get("method"), "arms": arms}
+
+
+# ---- the client, as one file (for notebooks and quick starts: no package to install) -------------------------------
+
+@router.get("/v1/sdk/intentseal_delegate.py", include_in_schema=False)
+async def sdk_client() -> Any:
+    """The Delegate client and Google ADK guard (`intentseal.delegate`), served as a single importable file."""
+    from importlib.resources import files
+
+    from fastapi.responses import PlainTextResponse
+    return PlainTextResponse(files("intentseal").joinpath("delegate.py").read_text(encoding="utf-8"),
+                             media_type="text/x-python")

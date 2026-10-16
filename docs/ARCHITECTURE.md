@@ -9,12 +9,15 @@
 | ① | Contract compiler | `intentseal_core/delegate/compiler.py` | Gemini (`ModelDrafter`, router role `contract`) drafts clauses, each with an effect (permit or prohibit), an action, values and a quote. The word-rule drafter (`RuleDrafter`) fills actions the model missed and stands in when the model is unavailable (12 s timeout, 120 s cooldown). |
 | ② | Grounding validator | `compiler.py` (`validate`) | Keeps a clause only if its quote is in the employee's words, an action word is present (used as a verb for actions that leave), and every value appears in the quote and resolves from the trusted directory. Pasted or quoted material is masked first and grants nothing. |
 | ③ | Permission card | `delegate/model.py`, `service.py` | Hash-chained card versions. Confirm and amend require the card hash and the person who started the task (or an admin). |
-| ④ | Content filter | IntentSeal engine (`intentseal_core`) | Rules, a local classifier and an optional judge model inspect everything agents read. Hidden instructions are removed; the text is tracked as untrusted. A file held only for hidden text is re-inspected on its visible text and delivered when clean. |
+| ④ | Content filter | IntentSeal engine (`intentseal_core`) + `delegate/model_armor.py` | Rules, a local classifier and an optional judge model inspect everything agents read. Hidden instructions are removed; the text is tracked as untrusted. A file held only for hidden text is re-inspected on its visible text and delivered when clean. **Google Model Armor** then screens what the agent would receive; a prompt-injection or malicious-link match holds it. Model Armor only adds holds; if it is unreachable, the engine's decision stands. |
 | ⑤ | Action gate | `delegate/gate.py` | Checks each tool call: named recipients only, governed actions only on named resources, undeclared fields refused on actions that leave, amount limits across the whole task, confidential text cannot leave in a body, the latest instruction wins. An off-card call traced to untrusted content is stopped without a question; otherwise the employee is asked once. |
 | ⑥ | Bound approval | `delegate/service.py` | One question for one exact action (action hash), single use, 15-minute lifetime, answerable only by the person who delegated. |
 | ⑦ | Work receipt | `delegate/receipts.py` | Numbered, hash-chained receipts for every step, stop and approval. Gemini (role `receipt`) writes the report; each sentence must cite existing receipts and the names in it are checked; unsupported sentences are dropped. A template writer stands in without a model. |
 | — | Handoff seal | `delegate/handoff.py` | Messages between agents carry the workflow id and taint in an HMAC envelope (`INTENTSEAL_DELEGATE_SECRET`); tampering is detected. |
 | — | ADK connector | `delegate/adk.py` | `AdkGuard.before_tool` runs the gate before each tool call; `after_tool` runs the content filter on what reading tools return. A stopped call never runs and the agent is told why, so it continues with the rest of the task. |
+| — | Remote client | `packages/sdk/intentseal/delegate.py` (served at `/v1/sdk/intentseal_delegate.py`) | `DelegateClient` (REST) and `RemoteAdkGuard` (ADK callbacks over HTTP) for agents that run anywhere. |
+| — | Businesses over the API | `delegate_api.py` (`/v1/delegate-workspaces`), `model.custom_delegate_policy` | A company registers its tools, contacts, records and rules; bounded sizes, fixed record patterns (no caller regex), private to the registering key. |
+| — | Live agents | `delegate_demo/gemini_agents.py`, `live.py` | Real Gemini agents (Google ADK on Vertex AI) run the demo in the background, with retries on 429; a hijacked mode makes them obey what they read. |
 | — | Gateway | `services/gateway/intentseal_gateway/delegate_api.py` | REST API, per-business services, scopes (project key = employee or agent, admin = reviewer, public key = read-only Console), live sandbox demo, evaluation report. |
 | — | Console | `apps/console` | Landing page, Delegate page (card, live steps, questions, receipt), decisions feed, replay, review. |
 
@@ -69,8 +72,9 @@ the prototype deployment runs one instance for it.
 
 | Service | Use |
 |---|---|
-| Gemini (AI Studio key or Vertex AI) | Drafts the card, writes the receipt, runs the agent team |
-| Google ADK | Agent runtime; IntentSeal plugs in through two callbacks |
+| Vertex AI (Gemini) | Drafts the card, writes the receipt, runs the live agent team; service identity, no key (`llm/vertex_adapter.py`) |
+| Model Armor | Second screen in the content filter |
+| Google ADK | Agent runtime; IntentSeal plugs in through two callbacks, in process or remotely |
 | Cloud Run | Hosts the gateway image (`deploy/cloudbuild.yaml`) |
 | Cloud Build, Artifact Registry | Builds and stores the image |
 | Secret Manager | API keys, Gemini key, handoff-seal secret |

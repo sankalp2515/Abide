@@ -2,59 +2,69 @@
 #
 #   .\scripts\deploy_cloud_run.ps1 -Project my-intentseal-project [-Region asia-southeast1]
 #
+# Every command names -Project explicitly: the machine's active gcloud project is never read or changed.
 # What it does (each step is idempotent):
-#   1. points gcloud at the project you name (it never uses the currently active project silently)
-#   2. enables Cloud Run, Cloud Build, Artifact Registry, Secret Manager (and Vertex AI)
-#   3. creates the Artifact Registry repository "intentseal"
-#   4. creates the two secrets if missing, asking you to paste values (nothing is written to disk)
+#   1. enables Cloud Run, Cloud Build, Artifact Registry, Secret Manager, Vertex AI and Model Armor
+#   2. creates the Artifact Registry repository "intentseal" and the Model Armor template
+#   3. creates a runtime service account with only what it needs (Vertex AI user, Model Armor user, two secrets)
+#   4. creates the two secrets if missing (the API keys line is pasted, never written to disk; the seal key is random)
 #   5. lets Cloud Build build, push and deploy (deploy/cloudbuild.yaml)
 param(
   [Parameter(Mandatory = $true)][string]$Project,
   [string]$Region = "asia-southeast1",
-  [string]$PublicKey = "",
-  [switch]$UseVertex
+  [string]$ArmorLocation = "us-central1",
+  [string]$PublicKey = ""
 )
 $ErrorActionPreference = "Stop"
 if (-not $PublicKey) { $PublicKey = "pub-" + [guid]::NewGuid().ToString("N").Substring(0, 16) }
+$P = "--project=$Project"
 
-gcloud config set project $Project | Out-Null
 gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregistry.googleapis.com `
-  secretmanager.googleapis.com aiplatform.googleapis.com
+  secretmanager.googleapis.com aiplatform.googleapis.com modelarmor.googleapis.com $P
 
-$repo = gcloud artifacts repositories list --location=$Region --filter="name~intentseal" --format="value(name)"
-if (-not $repo) {
+if (-not (gcloud artifacts repositories list --location=$Region --filter="name~intentseal" --format="value(name)" $P)) {
   gcloud artifacts repositories create intentseal --repository-format=docker --location=$Region `
-    --description="IntentSeal Delegate images"
+    --description="IntentSeal Delegate images" $P
 }
 
-function Ensure-Secret([string]$Name, [string]$Prompt) {
-  $exists = gcloud secrets list --filter="name~$Name" --format="value(name)"
-  if (-not $exists) {
-    $value = Read-Host -Prompt $Prompt -AsSecureString
-    $plain = [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($value))
-    $plain | gcloud secrets create $Name --data-file=- --replication-policy=automatic
+# Model Armor: prompt injection / jailbreak and malicious links hold content; sensitive data is recorded.
+$token = gcloud auth print-access-token
+$armor = "https://modelarmor.$ArmorLocation.rep.googleapis.com/v1/projects/$Project/locations/$ArmorLocation/templates"
+$headers = @{ Authorization = "Bearer $token"; "x-goog-user-project" = $Project }
+try { Invoke-RestMethod -Uri "$armor/intentseal-delegate" -Headers $headers | Out-Null }
+catch {
+  $body = '{"filterConfig":{"piAndJailbreakFilterSettings":{"filterEnforcement":"ENABLED","confidenceLevel":"MEDIUM_AND_ABOVE"},' +
+          '"maliciousUriFilterSettings":{"filterEnforcement":"ENABLED"},"sdpSettings":{"basicConfig":{"filterEnforcement":"ENABLED"}}}}'
+  Invoke-RestMethod -Method Post -Uri "$armor`?templateId=intentseal-delegate" -Headers $headers `
+    -ContentType "application/json" -Body $body | Out-Null
+}
+
+# A runtime identity with only what the service needs.
+$sa = "intentseal-run@$Project.iam.gserviceaccount.com"
+if (-not (gcloud iam service-accounts list --filter="email=$sa" --format="value(email)" $P)) {
+  gcloud iam service-accounts create intentseal-run --display-name="IntentSeal Delegate runtime" $P
+}
+foreach ($role in "roles/aiplatform.user", "roles/modelarmor.user") {
+  gcloud projects add-iam-policy-binding $Project --member="serviceAccount:$sa" --role=$role --condition=None | Out-Null
+}
+
+function Ensure-Secret([string]$Name, [scriptblock]$Value) {
+  if (-not (gcloud secrets list --filter="name~$Name" --format="value(name)" $P)) {
+    (& $Value) | gcloud secrets create $Name --data-file=- --replication-policy=automatic $P
   }
+  gcloud secrets add-iam-policy-binding $Name --member="serviceAccount:$sa" `
+    --role="roles/secretmanager.secretAccessor" $P | Out-Null
 }
-Ensure-Secret "intentseal-api-keys" "INTENTSEAL_API_KEYS (e.g. employee:<random>:project,reviewer:<random>:admin)"
-Ensure-Secret "intentseal-gemini-key" "GEMINI_API_KEY (Gemini API key; any value if you use Vertex AI)"
-# The handoff-seal key: random, generated here, never shown.
-if (-not (gcloud secrets list --filter="name~intentseal-delegate-secret" --format="value(name)")) {
+Ensure-Secret "intentseal-api-keys" {
+  $v = Read-Host -Prompt "INTENTSEAL_API_KEYS (e.g. employee:<random>:project,reviewer:<random>:admin)" -AsSecureString
+  [Runtime.InteropServices.Marshal]::PtrToStringAuto([Runtime.InteropServices.Marshal]::SecureStringToBSTR($v))
+}
+Ensure-Secret "intentseal-delegate-secret" {       # the handoff-seal key: random, generated here, never shown
   $bytes = New-Object byte[] 32; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
-  [Convert]::ToBase64String($bytes) | gcloud secrets create intentseal-delegate-secret --data-file=- --replication-policy=automatic
+  [Convert]::ToBase64String($bytes)
 }
 
-# Cloud Run's runtime service account reads the secrets (and calls Vertex AI when -UseVertex is set).
-$number = gcloud projects describe $Project --format="value(projectNumber)"
-$sa = "$number-compute@developer.gserviceaccount.com"
-foreach ($s in "intentseal-api-keys", "intentseal-gemini-key", "intentseal-delegate-secret") {
-  gcloud secrets add-iam-policy-binding $s --member="serviceAccount:$sa" --role="roles/secretmanager.secretAccessor" | Out-Null
-}
-if ($UseVertex) {
-  gcloud projects add-iam-policy-binding $Project --member="serviceAccount:$sa" --role="roles/aiplatform.user" | Out-Null
-}
-
-$vertex = if ($UseVertex) { "true" } else { "false" }
-gcloud builds submit --config deploy/cloudbuild.yaml `
-  --substitutions="_REGION=$Region,_PUBLIC_KEY=$PublicKey,_USE_VERTEX=$vertex"
-gcloud run services describe intentseal-delegate --region=$Region --format="value(status.url)"
+gcloud builds submit --config deploy/cloudbuild.yaml $P `
+  --substitutions="_REGION=$Region,_PUBLIC_KEY=$PublicKey,_SA=$sa,_ARMOR_LOCATION=$ArmorLocation"
+gcloud run services describe intentseal-delegate --region=$Region --format="value(status.url)" $P
 Write-Host "Console read-only key (also baked into the Console build): $PublicKey"

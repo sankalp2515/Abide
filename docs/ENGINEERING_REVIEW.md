@@ -21,6 +21,10 @@ accepted. "Fixed" items have tests (`tests/test_delegate_*.py`).
 | G12 | AI engineering / UX | Slow or exhausted model made the card wait ~10 s | 12 s timeout (8 s originally; raised for Vertex AI, where a full card takes 3–9 s), 2-minute cooldown after a failure | `test_slow_model_is_cut_off_then_skipped` |
 | G13 | Architecture | Sandbox demo routes always on | `INTENTSEAL_DELEGATE_DEMO=0` turns them off | `test_demo_can_be_switched_off` |
 | G15 | DevOps | The image had never been built; a dependency (reportlab, for the sandbox PDFs) only arrived through a removed package | Docker Compose stack (gateway + PostgreSQL) built and checked end to end; reportlab declared by the gateway; CI imports every module in the image and starts both demos | `.github/workflows/ci.yml` (docker job) |
+| G16 | AI engineering | Live agents depended on a free API key | Vertex AI adapter (service identity, billed to the project), live Gemini agents by default, retries on 429, ADK warmed at start | `test_vertex_adapter.py`, live runs in EVAL.md |
+| G17 | Security | One content filter | Google Model Armor as a second screen; it only adds holds | `test_delegate_model_armor.py` |
+| G18 | Product / Security | Judges and companies could not bring their own agents or business | Businesses registered over the API (bounded, no caller regex, private), remote ADK guard, one-file client, self-serve 7-day trial keys (3 per address per hour) | `test_delegate_workspaces.py`, `test_delegate_remote_guard.py` |
+| G19 | DevOps | The deploy script changed the machine's active gcloud project | Every command names `--project`; dedicated runtime service account with least privilege | deploy files |
 | G14 | UX / Accessibility (WCAG) | No announcement of progress for screen readers; jargon on screen | `aria-live` status; plain labels; details folded (K1–K11) | walkthrough |
 
 ## Open, with the reason
@@ -30,7 +34,6 @@ accepted. "Fixed" items have tests (`tests/test_delegate_*.py`).
 | O1 | Security | Agent-runtime calls (`read`, `check`, `handoff`, `executed`) accept any project key, not only the agents of that workflow | Needs per-workflow agent credentials | Issue a short-lived delegation token at confirmation; require it on agent calls |
 | O2 | Security | `executed` is reported by the tool runner (trusted) | In production the gateway should execute tools itself (MCP proxy) so it observes execution | MCP proxy mode |
 | O3 | Database / Scale | Evidence is in PostgreSQL (Docker); the Cloud Run deployment still uses SQLite on one instance, and demo sandboxes live in memory (`--max-instances=1`) | PostgreSQL store is done and tested | Cloud SQL for PostgreSQL on Cloud Run; sandboxes out of process |
-| O4 | AI | Live Gemini agent runs need quota (free key: 20 requests per model per day) | Billing decision | Vertex AI on the project |
 | O5 | QA | The browser replay is not in CI | Needs a browser on the runner; the evaluation, tests, lint, Console build and a Docker smoke test are in `.github/workflows/ci.yml` | Add the Playwright replay as a CI job |
 | O8 | AI | Hinglish "Customer list mat bhejna" from Gemini can become "don't send anything" | Over-cautious, never unsafe; visible on the card | Prompt and validator tuning with quota |
 

@@ -518,7 +518,8 @@ class DelegateService:
         data["approval"] = approval_id
         rid = self._receipt(workflow_id, "check", agent=agent, tool=tool, decision=decision, reason=reason, data=data)
         out = {"decision": decision, "receipt": rid, "reason": reason, "ruling": ruling.as_dict(),
-               "action_hash": action_hash, "approval": approval_id, "traced_to": data.get("traced_to")}
+               "action_hash": action_hash, "approval": approval_id, "traced_to": data.get("traced_to"),
+               "action": spec.action if (spec := self.policy.tools.get(tool)) else None}
         if decision == "block":
             out["notice"] = NOTICE_BLOCK.format(reason=for_agent(reason).rstrip("."))
         elif decision == "ask":

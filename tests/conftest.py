@@ -17,3 +17,11 @@ def _policy_dir(tmp_path_factory, monkeypatch):
             shutil.copy2(f, target / f.name)
     monkeypatch.setenv("INTENTSEAL_POLICY_DIR", str(target))
     yield
+
+
+@pytest.fixture(autouse=True)
+def _no_live_google(monkeypatch):
+    """Tests never reach Google: live agents, Vertex AI and Model Armor stay off unless a test turns them on."""
+    for name in ("GOOGLE_CLOUD_PROJECT", "GOOGLE_GENAI_USE_VERTEXAI", "GEMINI_API_KEY", "GOOGLE_API_KEY",
+                 "INTENTSEAL_MODEL_ARMOR_TEMPLATE", "INTENTSEAL_TRIAL_KEYS"):
+        monkeypatch.delenv(name, raising=False)

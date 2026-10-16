@@ -1,0 +1,16 @@
+# Google services for the local stack: Gemini on Vertex AI and Model Armor, with your own Google credentials.
+#
+#   gcloud auth application-default login           # once
+#   # .env: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_QUOTA_PROJECT, INTENTSEAL_MODEL_ARMOR_TEMPLATE (see .env.example)
+#   GOOGLE_ADC=<path to application_default_credentials.json> \
+#     docker compose -f docker-compose.yml -f docker-compose.google.yml up -d
+#
+# The credentials file is mounted read-only and never copied into the image.
+#   Windows: %APPDATA%\gcloud\application_default_credentials.json
+#   macOS / Linux: ~/.config/gcloud/application_default_credentials.json
+services:
+  gateway:
+    environment:
+      GOOGLE_APPLICATION_CREDENTIALS: /run/secrets/google-adc.json
+    volumes:
+      - ${GOOGLE_ADC:?set GOOGLE_ADC to your application_default_credentials.json}:/run/secrets/google-adc.json:ro

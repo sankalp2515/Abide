@@ -114,6 +114,10 @@ def create_app(engine: Engine | None = None, reports_dir: Path | None = None) ->
             from .delegate_demo.live import warm_agents
             await asyncio.to_thread(warm_agents)    # live Gemini agents: load Google ADK now, not on the first task
         app.state.keys = KeyRing()
+        if os.environ.get("INTENTSEAL_TRIAL_KEYS", "0") == "1":     # self-serve 7-day keys (POST /v1/trial-keys)
+            from .security import TRIAL_SCHEMA
+            app.state.engine.store.ensure_schema(TRIAL_SCHEMA)
+            app.state.keys.trial_store = app.state.engine.store
         # Ephemeral key for the demo runner's own calls to the proxy (S9); random per process, never exposed.
         import secrets as _secrets
         app.state.internal_key = _secrets.token_urlsafe(24)
@@ -179,6 +183,12 @@ def create_app(engine: Engine | None = None, reports_dir: Path | None = None) ->
         body = {"ready": ready, "checks": checks, "tier1_error": tier1["error"] or None,
                 "judge": "available" if providers else "unavailable: flagged content is held"}
         return JSONResponse(body, status_code=200 if ready else 503)
+
+    @app.post("/v1/trial-keys", tags=["ops"], status_code=201)
+    async def trial_key(request: Request) -> dict[str, Any]:
+        """Create a 7-day project key for yourself (when the deployment allows it). No sign-up, nothing to install."""
+        from .security import issue_trial_key
+        return issue_trial_key(request.app.state.keys, request.client.host if request.client else "")
 
     @app.get("/v1/whoami", tags=["ops"])
     async def whoami(request: Request, p: Principal = require("public")) -> dict[str, Any]:

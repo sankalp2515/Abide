@@ -213,6 +213,34 @@ class DelegatePolicy(BaseModel):
         return found
 
 
+# Policies registered over the API: bounded sizes and fixed record-number patterns (no caller-supplied regex).
+SAFE_RECORD_PATTERNS = {"digits": r"\d{3,10}", "code": r"[A-Za-z0-9-]{3,20}"}
+CUSTOM_LIMITS = {"tools": 50, "contacts": 200, "resources": 200, "records": 10, "ask_before": 20, "org_domains": 10}
+
+
+def custom_delegate_policy(data: dict[str, Any], workspace_id: str) -> DelegatePolicy:
+    """A business's policy sent over the API. Raises ValueError with a readable reason."""
+    data = dict(data or {})
+    for field_, limit in CUSTOM_LIMITS.items():
+        if len(data.get(field_) or []) > limit:
+            raise ValueError(f"at most {limit} {field_}")
+    records = []
+    for rt in data.get("records") or []:
+        rt = dict(rt)
+        kind = rt.pop("pattern", "digits")
+        if kind not in SAFE_RECORD_PATTERNS:
+            raise ValueError("record pattern must be 'digits' or 'code'")
+        records.append({**rt, "pattern": SAFE_RECORD_PATTERNS[kind]})
+    data.update(records=records, workspace=workspace_id, agent_id="delegate-workspace")
+    policy = DelegatePolicy.model_validate(data)
+    if not policy.tools:
+        raise ValueError("a policy needs at least one tool")
+    wrong = sorted(n for n, t in policy.tools.items() if t.action not in ACTIONS)
+    if wrong:
+        raise ValueError(f"tool action must be one of {', '.join(ACTIONS)} (see {', '.join(wrong)})")
+    return policy
+
+
 def load_delegate_policy(name: str = "workspace", directory: Path | None = None) -> DelegatePolicy:
     path = (directory or repo_root() / "policies" / "delegate") / f"{name}.yaml"
     return DelegatePolicy.model_validate(yaml.safe_load(path.read_text(encoding="utf-8")) or {})

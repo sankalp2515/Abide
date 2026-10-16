@@ -50,3 +50,13 @@ Method and limits: [EVAL.md](EVAL.md).
 | Live Gemini agent team run | wired; needs Vertex AI or a billed key (free tier: 20 requests per model per day) |
 | Cloud Run deployment (Cloud Build, Artifact Registry, Secret Manager) | files ready; needs a dedicated Google Cloud project |
 | Cloud SQL for PostgreSQL on Cloud Run | next; the store already runs on PostgreSQL |
+
+## Google integration validation — 0.2.0 (17 Oct 2026, project `intentseal`, not deployed)
+
+| Check | Result |
+|---|---|
+| Python tests / lint / Console | 199 passed, 5 skipped / clean / 8 of 8 |
+| Evaluation (scripted, two businesses) | unchanged: 0 of 28 attacks, 26 of 26 tasks, 0.38 questions per task |
+| Docker with Google (`docker-compose.google.yml`), 12 checks | 12 of 12: ready with Vertex AI; trial key; one-file client served; live Gemini agents; card and receipt by `model:vertex/gemini-3.5-flash`; agents in the background (confirm in 2.7 s, work in 34 s); hijacked agent's ₹48,000 refund and customer export stopped and traced to the ticket while the ₹1,850 refund ran; Model Armor screened every read; a business registered with a trial key governs its own recipients |
+| Colab quickstart, run against a live gateway | trial key, travel agency registered, card by Vertex AI, remote Gemini ADK agent under the card, receipt chain intact |
+| Live agent runs | see [EVAL.md](EVAL.md), "Live runs with real Gemini agents" |

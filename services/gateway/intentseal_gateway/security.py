@@ -10,6 +10,9 @@ INTENTSEAL_PUBLIC_AGENTS   comma list: the only agents the public key can see (e
 INTENTSEAL_RATE_LIMIT_PER_MIN / INTENTSEAL_PUBLIC_RATE_LIMIT_PER_MIN   requests per minute per key (the public
                         key is limited per client address as well, so one visitor cannot use up everyone's quota)
 INTENTSEAL_MAX_BODY_BYTES   max request body (default 2 MB)
+INTENTSEAL_TRIAL_KEYS   1 = anyone may create a 7-day project key for themselves (POST /v1/trial-keys), so a
+                        visitor can try Delegate with their own agents without asking anyone. Off by default.
+                        Trial keys are stored hashed in the evidence store; each is a separate person.
 """
 
 from __future__ import annotations
@@ -17,6 +20,7 @@ from __future__ import annotations
 import hashlib
 import hmac
 import os
+import secrets
 import time
 from dataclasses import dataclass
 
@@ -62,6 +66,8 @@ class KeyRing:
             self._keys[_h(pub)] = Principal("public", "public", "default",
                                             _agents(os.environ.get("INTENTSEAL_PUBLIC_AGENTS", "").replace(",", "|")))
         self._buckets: dict[str, list[float]] = {}
+        self.trial_store = None                  # set by the app when INTENTSEAL_TRIAL_KEYS=1
+        self._trial_cache: dict[str, tuple[Principal | None, float]] = {}
         self.limit = int(os.environ.get("INTENTSEAL_RATE_LIMIT_PER_MIN") or "120")
         self.public_limit = int(os.environ.get("INTENTSEAL_PUBLIC_RATE_LIMIT_PER_MIN") or "20")
 
@@ -79,6 +85,8 @@ class KeyRing:
         for stored, p in self._keys.items():
             if hmac.compare_digest(stored, h):
                 return p
+        if self.trial_store is not None and key.startswith(TRIAL_PREFIX):
+            return self._trial(h)
         return None
 
     def allow(self, p: Principal, client: str = "") -> bool:
@@ -95,6 +103,46 @@ class KeyRing:
             for k in [k for k, v in self._buckets.items() if not v or now - v[-1] >= 60]:
                 del self._buckets[k]
         return True
+
+
+TRIAL_PREFIX = "isk_trial_"
+TRIAL_DAYS = 7
+TRIAL_PER_ADDRESS_PER_HOUR = 3
+TRIAL_SCHEMA = ["""CREATE TABLE IF NOT EXISTS trial_keys (hash TEXT PRIMARY KEY, name TEXT, address TEXT,
+                   created REAL, expires REAL)"""]
+
+
+def _trial(self: KeyRing, h: str) -> Principal | None:
+    hit = self._trial_cache.get(h)
+    if hit and time.time() - hit[1] < 30:
+        return hit[0]
+    rows = self.trial_store.query("SELECT name, expires FROM trial_keys WHERE hash = ?", (h,))
+    p = Principal(rows[0]["name"], "project") if rows and rows[0]["expires"] > time.time() else None
+    if len(self._trial_cache) > 5000:
+        self._trial_cache.clear()
+    self._trial_cache[h] = (p, time.time())
+    return p
+
+
+KeyRing._trial = _trial      # type: ignore[attr-defined]
+
+
+def issue_trial_key(ring: KeyRing, address: str) -> dict[str, object]:
+    """A new 7-day project key for one visitor. The key is shown once; only its hash is stored."""
+    store = ring.trial_store
+    if store is None:
+        raise HTTPException(404, "trial keys are not enabled on this deployment")
+    now = time.time()
+    recent = store.query("SELECT hash FROM trial_keys WHERE address = ? AND created > ?", (address, now - 3600))
+    if len(recent) >= TRIAL_PER_ADDRESS_PER_HOUR:
+        raise HTTPException(429, "too many trial keys from this address; try again in an hour",
+                            headers={"Retry-After": "3600"})
+    key = TRIAL_PREFIX + secrets.token_urlsafe(24)
+    name = "trial-" + secrets.token_hex(4)
+    expires = now + TRIAL_DAYS * 86400
+    store.execute("INSERT INTO trial_keys VALUES (?,?,?,?,?)", (_h(key), name, address, now, expires))
+    return {"key": key, "name": name, "scope": "project", "expires": expires,
+            "note": "Shown once. Your delegations and businesses are private to this key."}
 
 
 def _key_from(request: Request) -> str | None:

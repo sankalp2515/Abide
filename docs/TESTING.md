@@ -84,16 +84,18 @@ The response is the card (clauses with quotes, its hash and the workflow id). Co
 docker compose exec postgres psql -U intentseal -c "select workflow_id, seq, kind, decision from delegate_receipts order by created desc limit 10;"
 ```
 
-## 7. Gemini (optional)
+## 7. Google: Vertex AI, live agents, Model Armor
 
-With `GEMINI_API_KEY` in `.env`, the card and the receipt come from Gemini. To run real Gemini agents (Google ADK)
-through IntentSeal, in a development environment:
+With Google configured (`.env`: `GOOGLE_CLOUD_PROJECT`, `GOOGLE_CLOUD_QUOTA_PROJECT`,
+`INTENTSEAL_MODEL_ARMOR_TEMPLATE`; Docker: `docker-compose.google.yml`):
 
-```bash
-INTENTSEAL_DELEGATE_AGENT_MODEL=gemini-3.5-flash python -c "import asyncio; from intentseal_gateway.delegate_demo.scenario import Scenario, run, show; show(asyncio.run(run(Scenario('ravi'), 'delegate', firewall=False, agents='gemini')))"
-```
-
-One run uses about 10 model requests; the free AI Studio tier allows 20 per model per day.
+| Check | What you should see |
+|---|---|
+| Delegate page, any task | The card says "drafted by model:vertex/gemini-3.5-flash"; "What happened" says "Live Gemini agents (Google ADK)" and fills in as they work (30–60 s) |
+| Tick "Simulate a hijacked assistant" and turn the filter off | The agent tries actions from the document; each is Stopped with the reason and what it was traced to |
+| Write your own attack in the new field | It is planted in the PDF or email you chose; the filter removes it, or the card stops what it causes |
+| Receipts (Details) of a read | `model_armor: {checked: true, match: ...}` on every inspected read |
+| The Colab quickstart against your gateway | A trial key, a registered travel agency, a remote Gemini agent under the card, and its receipt ([INTEGRATE.md](INTEGRATE.md)) |
 
 ## 8. Browser replay
 

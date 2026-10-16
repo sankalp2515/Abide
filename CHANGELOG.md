@@ -1,5 +1,15 @@
 # Changelog
 
+## 0.2.0 — 2026-10-17
+
+- Gemini on Vertex AI through the model router (Google credentials, no API key, billed to the project, daily token cap).
+- The live demo runs real Gemini agents (Google ADK) by default, in the background; a hijacked-agent mode and the
+  visitor's own attack text show the gate stopping a real agent.
+- Google Model Armor as a second screen in the content filter.
+- Bring your own business (`/v1/delegate-workspaces`) and your own agent (`RemoteAdkGuard`, one-file client at
+  `/v1/sdk/intentseal_delegate.py`), self-serve 7-day trial keys, and a Colab quickstart.
+- Cloud Run deployment is keyless (Vertex AI, Model Armor) with a least-privilege runtime service account.
+
 ## 0.1.0 — 2026-10-16
 
 First release of IntentSeal Delegate.

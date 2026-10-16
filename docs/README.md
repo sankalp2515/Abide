@@ -2,6 +2,7 @@
 
 | Document | For |
 |---|---|
+| [INTEGRATE.md](INTEGRATE.md) | Bring your own agent and business: trial keys, policy reference, ADK and REST |
 | [ARCHITECTURE.md](ARCHITECTURE.md) | Components, request flow, data model, security model, scaling, Google Cloud services |
 | [EVAL.md](EVAL.md) | Evaluation results, method and limits |
 | [TESTING.md](TESTING.md) | Every claim and how to check it: Docker, tests, Console, API, database, Gemini |
