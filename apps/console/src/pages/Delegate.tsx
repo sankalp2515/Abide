@@ -72,6 +72,7 @@ function draftedBy(compiler: string): string {
   return compiler.includes("rejected") ? "Drafted by word rules (Gemini's draft did not match your words)" : "Drafted by word rules";
 }
 
+const LOCAL = typeof window !== "undefined" && ["localhost", "127.0.0.1", "[::1]"].includes(window.location.hostname);
 const LEAVES = new Set(["send", "share", "submit", "purchase", "delete", "execute"]);
 /** A clause the model understood but the word checks could not read (e.g. Hinglish), for something that leaves the
  *  company: it only counts if the employee ticks it. */
@@ -170,7 +171,7 @@ function KeyGate() {
           aria-label="Project key" value={key} onChange={(e) => setKey(e.target.value)} />
         <button className="pill" disabled={!key.trim()}>Continue with key</button>
       </form>
-      <p className="subtle mt-3 text-xs">Running locally? Use <span className="mono">local-project-key</span>. The key stays in this tab only.</p>
+      <p className="subtle mt-3 text-xs">{LOCAL ? <>Running locally? Use <span className="mono">local-project-key</span>. </> : null}The key stays in this tab only.</p>
       {error && <div className="mt-2"><ErrorNote>{error}</ErrorNote></div>}
     </Card>
   );
@@ -324,6 +325,7 @@ export function Delegate() {
                           <Tag tone={o.tone}>{o.text}</Tag>
                         </div>
                         {e.note && <p className="mt-1 text-xs" style={{ color: e.outcome === "ran" ? "var(--neutralise)" : o.tone }}>{e.note}</p>}
+                        {e.explain && <p className="mt-2 flex gap-1.5 text-xs leading-relaxed" style={{ color: "var(--text)" }}><span className="shrink-0 font-semibold" style={{ color: "var(--accent-text)" }}>✦ Gemini:</span><span>{e.explain}</span></p>}
                       </li>
                     );
                   })}

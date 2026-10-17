@@ -72,6 +72,20 @@ Ensure-Secret "intentseal-delegate-secret" {       # the handoff-seal key: rando
   [Convert]::ToBase64String($bytes)
 }
 
+# Cloud SQL (PostgreSQL): cards, receipts, workspaces and trial keys survive restarts and are shared by instances.
+gcloud services enable sqladmin.googleapis.com $P
+if (-not (gcloud sql instances list --filter="name=abide-db" --format="value(name)" $P)) {
+  gcloud sql instances create abide-db --database-version=POSTGRES_16 --edition=ENTERPRISE --tier=db-f1-micro `
+    --region=$Region --storage-type=HDD --storage-size=10 $P
+  gcloud sql databases create abide --instance=abide-db $P
+  $bytes = New-Object byte[] 24; [Security.Cryptography.RandomNumberGenerator]::Create().GetBytes($bytes)
+  $pw = -join ($bytes | ForEach-Object { $_.ToString("x2") })
+  gcloud sql users create abide --instance=abide-db --password=$pw $P
+  Ensure-Secret "intentseal-database-url" { "postgresql://abide:$pw@/abide?host=/cloudsql/${Project}:${Region}:abide-db" }
+}
+gcloud projects add-iam-policy-binding $Project --member="serviceAccount:$sa" --role=roles/cloudsql.client `
+  --condition=None | Out-Null
+
 gcloud builds submit --config deploy/cloudbuild.yaml $P `
   --substitutions="_REGION=$Region,_PUBLIC_KEY=$PublicKey,_SA=$sa,_ARMOR_LOCATION=$ArmorLocation"
 gcloud run services describe abide --region=$Region --format="value(status.url)" $P

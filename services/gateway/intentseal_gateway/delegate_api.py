@@ -23,6 +23,7 @@ from pydantic import BaseModel, Field
 from intentseal_core.delegate import load_delegate_policy
 from intentseal_core.delegate.compiler import ModelDrafter
 from intentseal_core.delegate.handoff import SealError
+from intentseal_core.delegate.explain import ModelExplainer
 from intentseal_core.delegate.receipts import ModelWriter
 from intentseal_core.delegate.service import DelegateError, DelegateForbidden, DelegateService
 
@@ -105,12 +106,13 @@ def _services(request: Request) -> dict[str, DelegateService]:
         roles = getattr(getattr(router_, "settings", None), "roles", {}) or {}
         drafter = ModelDrafter(router_) if "contract" in roles else None
         writer = ModelWriter(router_) if "receipt" in roles else None
+        explainer = ModelExplainer(router_) if "explain" in roles else None
         from intentseal_core.delegate.model_armor import ModelArmor
         armor = ModelArmor.from_env()           # INTENTSEAL_MODEL_ARMOR_TEMPLATE: Google Model Armor as a second screen
-        app.state.delegate_parts = (engine, drafter, writer, armor)
+        app.state.delegate_parts = (engine, drafter, writer, armor, explainer)
         svcs = app.state.delegate_services = {
             name: DelegateService(load_delegate_policy(name), engine=engine, drafter=drafter, writer=writer,
-                                  model_armor=armor)
+                                  model_armor=armor, explainer=explainer)
             for name in WORKSPACES}
         log.info("delegate: drafter=%s writer=%s model_armor=%s", drafter.name if drafter else "rules",
                  writer.name if writer else "template", armor.template if armor else "off")
@@ -161,9 +163,9 @@ def _custom_service(request: Request, wid: str) -> DelegateService | None:
     row = _custom_row(request, wid)
     if row is None:
         return None
-    engine, drafter, writer, armor = request.app.state.delegate_parts
+    engine, drafter, writer, armor, explainer = request.app.state.delegate_parts
     svc = DelegateService(custom_delegate_policy(json.loads(row["policy"]), wid), engine=engine, drafter=drafter,
-                          writer=writer, model_armor=armor)
+                          writer=writer, model_armor=armor, explainer=explainer)
     cache[wid] = svc
     while len(cache) > CUSTOM_CACHE:
         cache.popitem(last=False)

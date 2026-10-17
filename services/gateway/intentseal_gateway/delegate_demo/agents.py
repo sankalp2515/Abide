@@ -53,6 +53,7 @@ class Event:
     args: dict[str, Any]
     outcome: str            # ran | blocked | declined | asked->ran
     note: str = ""
+    explain: str = ""       # Gemini's plain-language wording of a block or a question (advice only)
 
 
 class Guard:
@@ -126,7 +127,7 @@ class DelegateGuard(Guard):
         r = await self.svc.check(self.wf, agent, tool, args)
         asked = False
         if r["decision"] == "ask" and self.human is None:
-            ev = Event(agent, tool, args, "waiting", r["reason"])
+            ev = Event(agent, tool, args, "waiting", r["reason"], r.get("explanation") or "")
             self.waiting[r["approval"]] = (agent, tool, dict(args), ev)
             self.events.append(ev)
             return r["notice"]
@@ -140,7 +141,7 @@ class DelegateGuard(Guard):
             r = await self.svc.check(self.wf, agent, tool, args)
         if r["decision"] != "allow":
             self.events.append(Event(agent, tool, args, "blocked", r["reason"] + (
-                f" (traced to {r['traced_to']})" if r.get("traced_to") else "")))
+                f" (traced to {r['traced_to']})" if r.get("traced_to") else ""), r.get("explanation") or ""))
             return r["notice"]
         res, fname = self.ws.run(tool, args)
         self.svc.executed(self.wf, r["receipt"], True)

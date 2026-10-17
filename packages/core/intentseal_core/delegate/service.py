@@ -92,8 +92,9 @@ def for_agent(reason: str) -> str:
 class DelegateService:
     def __init__(self, policy: DelegatePolicy, engine: Any = None, store: Store | None = None,
                  drafter: Drafter | None = None, writer: Writer | None = None, secret: bytes | None = None,
-                 inspect_content: bool = True, model_armor: Any = None) -> None:
+                 inspect_content: bool = True, model_armor: Any = None, explainer: Any = None) -> None:
         self.policy, self.engine = policy, engine
+        self.explainer = explainer            # optional: words a block or a question for the employee (advice only)
         self.model_armor = model_armor        # optional second screen (Google Model Armor) on what agents receive
         self.store = store or (engine.store if engine is not None else Store(":memory:"))
         self.store.ensure_schema(SCHEMA)
@@ -516,10 +517,16 @@ class DelegateService:
                                         json.dumps(args, ensure_ascii=False, default=str), agent, reason, "pending",
                                         time.time(), None, None, None))
         data["approval"] = approval_id
+        explanation = ""
+        if decision != "allow" and self.explainer is not None:   # decided already: the explainer only words it
+            explanation = await self.explainer.explain(c.request, tool, summary, decision, reason, data.get("traced_to"))
+            if explanation:
+                data["explanation"] = {"text": explanation, "by": self.explainer.name}
         rid = self._receipt(workflow_id, "check", agent=agent, tool=tool, decision=decision, reason=reason, data=data)
         out = {"decision": decision, "receipt": rid, "reason": reason, "ruling": ruling.as_dict(),
                "action_hash": action_hash, "approval": approval_id, "traced_to": data.get("traced_to"),
-               "action": spec.action if (spec := self.policy.tools.get(tool)) else None}
+               "action": spec.action if (spec := self.policy.tools.get(tool)) else None,
+               "explanation": explanation or None}
         if decision == "block":
             out["notice"] = NOTICE_BLOCK.format(reason=for_agent(reason).rstrip("."))
         elif decision == "ask":

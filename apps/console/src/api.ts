@@ -317,7 +317,7 @@ export interface DApproval {
   id: string; action_hash: string; contract_hash: string; tool: string; args: Record<string, unknown>; agent: string;
   reason: string; status: "pending" | "approved" | "denied" | "used" | "expired"; created: number;
 }
-export interface DEvent { agent: string; tool: string; args: Record<string, unknown>; outcome: string; note: string }
+export interface DEvent { agent: string; tool: string; args: Record<string, unknown>; outcome: string; note: string; explain?: string }
 export interface DReport { writer: string; sentences: { text: string; cites: string[] }[]; dropped: { text: string; reason: string }[]; chain_ok: boolean }
 export interface DState {
   workflow: { id: string; owner: string; created: number };

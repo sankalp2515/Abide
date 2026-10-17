@@ -54,7 +54,7 @@ class AdkGuard:
             if self.on_ask is None:
                 self.waiting[r["approval"]] = (name, args)
                 self.events.append({"agent": self.agent, "tool": name, "args": args, "outcome": "waiting",
-                                    "note": r["reason"]})
+                                    "note": r["reason"], "explain": r.get("explanation") or ""})
                 return {"status": "waiting", "message": r["notice"]}
             ok = await self.on_ask(r)
             self.svc.resolve(self.wf, r["approval"], ok, self.svc.owner_of(self.wf))
@@ -65,7 +65,8 @@ class AdkGuard:
             r = await self.svc.check(self.wf, self.agent, name, args)
         if r["decision"] != "allow":
             note = r["reason"] + (f" (traced to {r['traced_to']})" if r.get("traced_to") else "")
-            self.events.append({"agent": self.agent, "tool": name, "args": args, "outcome": "blocked", "note": note})
+            self.events.append({"agent": self.agent, "tool": name, "args": args, "outcome": "blocked", "note": note,
+                                "explain": r.get("explanation") or ""})
             return {"status": "stopped", "message": r["notice"]}
         self._receipts[_key(name, args)] = r["receipt"]
         return None

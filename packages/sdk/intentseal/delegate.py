@@ -15,6 +15,14 @@ Self-contained (only `httpx`), so it also works as a single downloaded file:
     ...
     print(await client.report(card["workflow_id"]))                # the receipt: every step, cited
 
+Other agent frameworks, same card (all async; the tool names must be in your policy):
+
+    gate = ToolGate(client, card["workflow_id"], "my-agent")
+    send = gate.wrap(send_email)                                   # any Python function, incl. Gemini SDK tools
+    tools = langchain_tools(gate, [search, send_email_tool])       # LangChain / LangGraph (use ainvoke)
+    tools = openai_agents_tools(gate, [send_email_tool])           # OpenAI Agents SDK FunctionTools
+    text = await mcp_call(gate, session, "send_email", {...})      # any MCP server's tools
+
 Every tool call your agent makes is checked against the card before it runs. A call outside it never runs and the
 agent is told why, so it carries on with the rest of the task. What reading tools return is inspected (hidden
 instructions removed) before the agent sees it.
@@ -23,12 +31,16 @@ instructions removed) before the agent sees it.
 from __future__ import annotations
 
 import base64
+import dataclasses
+import functools
+import inspect
 import json
 from typing import Any, Awaitable, Callable
 
 import httpx
 
-__all__ = ["DelegateClient", "DelegateError", "RemoteAdkGuard"]
+__all__ = ["DelegateClient", "DelegateError", "RemoteAdkGuard", "ToolGate", "langchain_tools", "mcp_call",
+           "openai_agents_tools"]
 
 
 class DelegateError(RuntimeError):
@@ -163,11 +175,12 @@ class RemoteAdkGuard:
             r = await self.client.check(self.wf, self.agent, name, args)
         if r["decision"] == "ask":
             self.events.append({"tool": name, "args": args, "outcome": "waiting", "note": r["reason"],
-                                "approval": r["approval"]})
+                                "approval": r["approval"], "explain": r.get("explanation") or ""})
             return {"status": "waiting", "message": r.get("notice", "Waiting for the employee.")}
         if r["decision"] != "allow":
             note = r["reason"] + (f" (traced to {r['traced_to']})" if r.get("traced_to") else "")
-            self.events.append({"tool": name, "args": args, "outcome": "blocked", "note": note})
+            self.events.append({"tool": name, "args": args, "outcome": "blocked", "note": note,
+                                "explain": r.get("explanation") or ""})
             return {"status": "stopped", "message": r.get("notice", note)}
         self._pending[_key(name, args)] = (r["receipt"], r.get("action"))
         return None
@@ -192,3 +205,96 @@ class RemoteAdkGuard:
         if seen.get("flagged"):
             self.events[-1]["note"] = "Hidden or suspicious instructions removed before the agent read it"
         return {"result": seen["content"]}
+
+
+# ---- other agent frameworks ------------------------------------------------------------------------------------------
+class ToolGate:
+    """Framework-neutral: check one tool call against the card, run it only if allowed, record that it ran, and
+    inspect what a reading tool returned. Every adapter below is a thin layer over `run`.
+
+    A stopped or waiting call never runs: `run` returns the reason as text, so the agent can carry on without it.
+    """
+
+    def __init__(self, client: DelegateClient, workflow_id: str, agent_name: str,
+                 on_ask: AskHandler | None = None) -> None:
+        self.client, self.wf, self.agent, self.on_ask = client, workflow_id, agent_name, on_ask
+        self.events: list[dict[str, Any]] = []
+
+    async def run(self, tool: str, args: dict[str, Any], call: Callable[[], Any]) -> Any:
+        args = _args(args)
+        r = await self.client.check(self.wf, self.agent, tool, args)
+        if r["decision"] == "ask" and self.on_ask is not None:
+            ok = await self.on_ask(r)
+            await self.client.answer(self.wf, r["approval"], ok)
+            if not ok:
+                self.events.append({"tool": tool, "args": args, "outcome": "declined", "note": r["reason"]})
+                return "The employee declined this exact action. Continue without it."
+            r = await self.client.check(self.wf, self.agent, tool, args)
+        if r["decision"] != "allow":
+            outcome = "waiting" if r["decision"] == "ask" else "blocked"
+            note = r["reason"] + (f" (traced to {r['traced_to']})" if r.get("traced_to") else "")
+            self.events.append({"tool": tool, "args": args, "outcome": outcome, "note": note,
+                                "approval": r.get("approval"), "explain": r.get("explanation") or ""})
+            return r.get("notice", note)
+        try:
+            result = call()
+            if inspect.isawaitable(result):
+                result = await result
+        except Exception as e:
+            await self.client.executed(self.wf, r["receipt"], False, type(e).__name__)
+            raise
+        await self.client.executed(self.wf, r["receipt"], True)
+        self.events.append({"tool": tool, "args": args, "outcome": "ran", "note": ""})
+        if r.get("action") != "read":
+            return result
+        content: str | bytes = result if isinstance(result, (str, bytes)) else json.dumps(result, default=str)
+        seen = await self.client.read(self.wf, self.agent, content, source=f"tool:{tool}")
+        if seen.get("flagged"):
+            self.events[-1]["note"] = "Hidden or suspicious instructions removed before the agent read it"
+        return seen["content"]
+
+    def wrap(self, fn: Callable[..., Any], name: str | None = None) -> Callable[..., Awaitable[Any]]:
+        """An async, guarded copy of `fn` with the same name, signature and docstring (frameworks read them)."""
+        tool, sig = name or fn.__name__, inspect.signature(fn)
+
+        @functools.wraps(fn)
+        async def guarded(*a: Any, **kw: Any) -> Any:
+            bound = sig.bind(*a, **kw)
+            bound.apply_defaults()
+            return await self.run(tool, dict(bound.arguments), lambda: fn(*a, **kw))
+        return guarded
+
+
+def langchain_tools(gate: ToolGate, tools: list[Any]) -> list[Any]:
+    """Guarded copies of LangChain `StructuredTool`s (`@tool`, `StructuredTool.from_function`). Use `ainvoke`."""
+    out = []
+    for t in tools:
+        original = t.coroutine or t.func
+        if original is None:
+            raise TypeError(f"{t.name}: only function-backed LangChain tools can be guarded")
+
+        async def guarded(*a: Any, _original: Any = original, _name: str = t.name, **kw: Any) -> Any:
+            return await gate.run(_name, kw, lambda: _original(*a, **kw))
+
+        def refuse(*a: Any, _name: str = t.name, **kw: Any) -> Any:
+            raise RuntimeError(f"{_name} is guarded by Abide: call it with ainvoke")
+        out.append(t.model_copy(update={"coroutine": guarded, "func": refuse}))
+    return out
+
+
+def openai_agents_tools(gate: ToolGate, tools: list[Any]) -> list[Any]:
+    """Guarded copies of OpenAI Agents SDK `FunctionTool`s (`@function_tool`)."""
+    out = []
+    for t in tools:
+        async def invoke(ctx: Any, raw: str, _original: Any = t.on_invoke_tool, _name: str = t.name) -> Any:
+            return await gate.run(_name, json.loads(raw or "{}"), lambda: _original(ctx, raw))
+        out.append(dataclasses.replace(t, on_invoke_tool=invoke))
+    return out
+
+
+async def mcp_call(gate: ToolGate, session: Any, tool: str, args: dict[str, Any]) -> str:
+    """Call one tool on an MCP `ClientSession`, guarded. Returns the tool's text (inspected, for reading tools)."""
+    async def call() -> str:
+        res = await session.call_tool(tool, args)
+        return "\n".join(c.text for c in getattr(res, "content", None) or [] if getattr(c, "text", None))
+    return str(await gate.run(tool, args, call))

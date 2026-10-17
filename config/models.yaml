@@ -42,8 +42,9 @@ roles:
     cache: true
     max_queue_s: 2          # latency-sensitive: fail over instead of queueing behind a tokens/min limit
     cache_ttl_s: 604800
-    defaults: { temperature: 0, max_tokens: 1000 }
+    defaults: { temperature: 0, max_tokens: 2000 }
     models:
+      - { provider: vertex,     model: gemini-3.5-flash,      params: { reasoning_effort: low } }   # Google build: Gemini judges first
       - { provider: groq,       model: openai/gpt-oss-20b,    params: { reasoning_effort: low }, price_per_mtok: { input: 0.075, output: 0.30 } }
       - { provider: nvidia,     model: openai/gpt-oss-20b,    params: { reasoning_effort: low } }
       - { provider: gemini,     model: gemini-3.1-flash-lite }
@@ -56,8 +57,9 @@ roles:
     cache: true
     max_queue_s: 5
     cache_ttl_s: 604800
-    defaults: { temperature: 0, max_tokens: 1000 }
+    defaults: { temperature: 0, max_tokens: 2000 }
     models:
+      - { provider: vertex, model: gemini-3.5-flash, params: { reasoning_effort: low } }   # 1M-token context
       - { provider: nvidia, model: nvidia/nemotron-3-ultra-550b-a55b }
       - { provider: gemini, model: gemini-3.1-flash-lite }
 
@@ -98,6 +100,17 @@ roles:
       - { provider: vertex, model: gemini-3.5-flash, params: { reasoning_effort: low } }
       - { provider: gemini, model: gemini-3.5-flash, params: { reasoning_effort: low } }
       - { provider: gemini, model: gemini-flash-latest, params: { reasoning_effort: low } }
+      - { provider: gemini, model: gemini-3.1-flash-lite }
+  # Words a blocked or paused action for the employee (advice only: the rules already decided).
+  explain:
+    cache: true
+    cache_ttl_s: 86400
+    max_queue_s: 6
+    wait_on_rate_limit_s: 4        # the live agents share Vertex: ride out a brief 429
+    defaults: { temperature: 0, max_tokens: 1500 }
+    models:
+      - { provider: vertex, model: gemini-3.5-flash, params: { reasoning_effort: low } }
+      - { provider: gemini, model: gemini-3.5-flash, params: { reasoning_effort: low } }
       - { provider: gemini, model: gemini-3.1-flash-lite }
   receipt:
     cache: false
