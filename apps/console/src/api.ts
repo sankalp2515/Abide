@@ -268,7 +268,7 @@ async function call<T>(path: string, init?: RequestInit, key: string = API_KEY):
 }
 
 export const api = {
-  health: () => call<{ ok: boolean; uptime_s: number }>("/healthz"),
+  health: () => call<{ ok: boolean; uptime_s: number }>("/v1/health"),
   scenarios: () => call<Scenario[]>("/demo/scenarios"),
   run: (scenario_id: string, protection: "on" | "off") =>
     call<DemoResult>("/demo/run", { method: "POST", body: JSON.stringify({ scenario_id, protection }) }),

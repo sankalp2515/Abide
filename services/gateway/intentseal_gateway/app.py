@@ -162,6 +162,7 @@ def create_app(engine: Engine | None = None, reports_dir: Path | None = None) ->
         return JSONResponse({"detail": str(exc)[:200] or "invalid request"}, status_code=422)
 
     @app.get("/healthz", tags=["ops"])
+    @app.get("/v1/health", tags=["ops"])           # Cloud Run's front end answers /healthz itself
     async def healthz(request: Request) -> dict[str, Any]:
         return {"ok": True, "uptime_s": round(time.time() - request.app.state.started, 1)}
 
