@@ -2,15 +2,31 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import type { Decision } from "../api";
 
 /* ---- brand ---------------------------------------------------------------------------------- */
-/** Abide's mark: a speech bubble (your words) holding a check (the one approval). */
+/** Abide's mark: a slightly turned stamp frame holding a tick (your words, approved once). */
 export function SealMark({ size = 26 }: { size?: number }) {
   return (
-    <svg width={size} height={size} viewBox="0 0 30 30" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.8}
-      strokeLinecap="round" strokeLinejoin="round">
-      <path d="M4 7a3.5 3.5 0 0 1 3.5-3.5h15A3.5 3.5 0 0 1 26 7v11a3.5 3.5 0 0 1-3.5 3.5H14l-6.5 5v-5h0A3.5 3.5 0 0 1 4 18z" />
-      <path d="m10.5 12.5 3.2 3.2 6-6.2" />
+    <svg width={size} height={size} viewBox="0 0 34 34" aria-hidden fill="none" stroke="currentColor" strokeWidth={2.6}>
+      <rect x="3" y="3" width="28" height="28" rx="3" transform="rotate(-4 17 17)" />
+      <path d="M10.5 17.5l4.5 4.5 8.5-9" strokeLinecap="square" />
     </svg>
   );
+}
+
+export function Wordmark() {
+  return <span className="flex items-center gap-2.5" style={{ color: "var(--accent)" }}><SealMark size={24} />
+    <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 21, letterSpacing: "-0.02em" }}>abide</span></span>;
+}
+
+/* ---- stamps: the product's decisions, readable without colour ------------------------------------- */
+export type StampKind = "ran" | "stopped" | "wait" | "quiet";
+const STAMP_ICON: Record<StampKind, ReactNode> = {
+  ran: <path d="M2 7.5l3 3L12 3.5" />,
+  stopped: <path d="M3 3l8 8M11 3l-8 8" />,
+  wait: <><circle cx="7" cy="7" r="5.2" /><path d="M7 4.2V7.4l2 1.4" /></>,
+  quiet: <path d="M3 7h8" />,
+};
+export function Stamp({ kind, children, live = false }: { kind: StampKind; children: ReactNode; live?: boolean }) {
+  return <span className={`stamp stamp-${kind}${live ? " press" : ""}`}><svg viewBox="0 0 14 14" aria-hidden>{STAMP_ICON[kind]}</svg>{children}</span>;
 }
 
 /** The Gemini spark, for what Gemini drafted or wrote. */
@@ -56,14 +72,14 @@ export function PageHeader({ index, label, title, lede, actions }: {
   index?: string; label: string; title: ReactNode; lede?: ReactNode; actions?: ReactNode;
 }) {
   return (
-    <header className="flex flex-col gap-6 md:flex-row md:items-end md:justify-between">
+    <header className="flex flex-col gap-6 border-b pb-7 md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--rule)" }}>
       <div>
-        <p className="section-label mb-4">{index ? `${index} / ` : ""}{label}</p>
+        <p className="section-label mb-3" data-index={index}>{label}</p>
         <h1 className="h2">{title}</h1>
       </div>
       {(lede || actions) && (
         <div className="flex max-w-md flex-col gap-4 md:items-end md:text-right">
-          {lede && <p className="lede m-0 text-[13px]">{lede}</p>}
+          {lede && <p className="lede m-0 text-[15px]">{lede}</p>}
           {actions}
         </div>
       )}
@@ -72,7 +88,7 @@ export function PageHeader({ index, label, title, lede, actions }: {
 }
 
 export function Card({ children, className = "", as: As = "section" }: { children: ReactNode; className?: string; as?: "section" | "article" | "div" }) {
-  return <As className={`card p-5 sm:p-7 ${className}`}>{children}</As>;
+  return <As className={`card p-5 sm:p-6 ${className}`}>{children}</As>;
 }
 
 export function CardTitle({ children, meta }: { children: ReactNode; meta?: ReactNode }) {
@@ -87,14 +103,14 @@ export function CardTitle({ children, meta }: { children: ReactNode; meta?: Reac
 export function Stat({ value, label, tone }: { value: ReactNode; label: ReactNode; tone?: string }) {
   return (
     <div>
-      <b className="num block text-[30px] font-normal tracking-tight" style={{ color: tone ?? "var(--accent-soft)" }}>{value}</b>
-      <small className="subtle mt-1 block text-[11px] leading-snug">{label}</small>
+      <b className="num block text-[34px] font-semibold tracking-tight" style={{ color: tone ?? "var(--text)", letterSpacing: "-0.03em" }}>{value}</b>
+      <small className="subtle mt-1 block text-[13px] leading-snug">{label}</small>
     </div>
   );
 }
 
 export function Empty({ children }: { children: ReactNode }) {
-  return <p className="subtle rounded-2xl border border-dashed p-5 text-sm hairline">{children}</p>;
+  return <p className="subtle rounded-md border border-dashed p-5 text-sm" style={{ borderColor: "var(--line-strong)" }}>{children}</p>;
 }
 
 export function ErrorNote({ children }: { children: ReactNode }) {

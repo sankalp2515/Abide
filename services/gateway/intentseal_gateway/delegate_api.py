@@ -243,7 +243,7 @@ async def insights(request: Request, days: int = 30, p: Principal = require("pub
     svcs = _services(request)
     bq = getattr(request.app.state, "delegate_analytics", None)
     if bq is None:
-        raise HTTPException(404, "analytics are not configured (INTENTSEAL_BIGQUERY_DATASET)")
+        return {"configured": False, "engine": "BigQuery", "note": "set INTENTSEAL_BIGQUERY_DATASET to enable"}
     scope = p.scope if p.scope in ("admin", "project") else "public"
     try:
         return await asyncio.to_thread(bq.insights, p.name, scope, tuple(s.policy.workspace for s in svcs.values()),
@@ -313,9 +313,26 @@ async def start(body: StartRequest, request: Request, p: Principal = require("pr
 
 @router.get("/v1/delegations")
 async def list_delegations(request: Request, p: Principal = require("project")) -> list[dict[str, Any]]:
-    rows = [w for svc in _services(request).values() for w in svc.workflows(500)
-            if p.scope == "admin" or svc.owner_of(w["id"]) == p.name]
-    return sorted(rows, key=lambda w: -w["created"])[:50]
+    """Your tasks, newest first, with what the "Your agents" page shows: the request, its status and counts."""
+    any_svc = next(iter(_services(request).values()))        # one store holds every business's workflows
+    rows = [w for w in any_svc.workflows(500) if p.scope == "admin" or any_svc.owner_of(w["id"]) == p.name][:50]
+    demos, out = _demos(request), []
+    for w in rows:
+        try:
+            svc = service(request, w["id"])
+            c = svc.contract(w["id"])
+        except DelegateError:
+            continue
+        checks = svc.store.query("SELECT decision, COUNT(*) AS n FROM delegate_receipts WHERE workflow_id = ? AND "
+                                 "kind = 'check' GROUP BY decision", (w["id"],))
+        waiting = svc.store.query("SELECT COUNT(*) AS n FROM delegate_approvals WHERE workflow_id = ? AND status = "
+                                  "'pending'", (w["id"],))
+        counts = {r["decision"]: int(r["n"]) for r in checks}
+        out.append({**w, "request": c.request[:300], "status": c.status, "business": svc.policy.workspace,
+                    "source": "demo" if w["id"] in demos else "api", "allowed": counts.get("allow", 0),
+                    "stopped": counts.get("block", 0), "asked": counts.get("ask", 0),
+                    "waiting": int(waiting[0]["n"]) if waiting else 0})
+    return out
 
 
 @router.get("/v1/delegations/{wf}")

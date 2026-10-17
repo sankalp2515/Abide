@@ -24,7 +24,7 @@ function Bars({ rows, label, value, tone }: { rows: Record<string, string | numb
 /** BigQuery over every receipt the gateway has streamed: hidden when analytics are not configured. */
 export function Insights() {
   const res = useAsync<Data>(() => api.insights(30), []);
-  if (res.error?.includes("not configured")) return null;
+  if (res.data && res.data.configured === false) return null;     // BigQuery is not set up on this server
   const d = res.data;
   const total = d ? d.decisions.reduce((n, r) => n + Number(r.n), 0) : 0;
   return (

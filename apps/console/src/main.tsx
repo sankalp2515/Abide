@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./index.css";
 import "./landing.css";
 import { Layout } from "./components/Layout";
+import { Agents } from "./pages/Agents";
 import { Decisions } from "./pages/Decisions";
 import { Delegate } from "./pages/Delegate";
 import { Overview } from "./pages/Overview";
@@ -12,11 +13,11 @@ import { Replay } from "./pages/Replay";
 import { Review } from "./pages/Review";
 import { Setup } from "./pages/Setup";
 
-// Dark is the primary Abide theme; an explicit choice is remembered. Applied before first paint.
+// Ledger paper (light) is the primary theme; "Night shift" (dark) is remembered when chosen. Before first paint.
 try {
-  document.documentElement.classList.toggle("dark", localStorage.getItem("theme") !== "light");
+  document.documentElement.classList.toggle("dark", localStorage.getItem("theme") === "dark");
 } catch {
-  document.documentElement.classList.add("dark");
+  /* storage unavailable: light */
 }
 
 createRoot(document.getElementById("root")!).render(
@@ -27,6 +28,7 @@ createRoot(document.getElementById("root")!).render(
         <Routes>
           <Route path="/" element={<Overview />} />
           <Route path="/delegate" element={<Delegate />} />
+          <Route path="/agents" element={<Agents />} />
           <Route path="/replay" element={<Replay />} />
           <Route path="/decisions" element={<Decisions />} />
           <Route path="/review" element={<Review />} />

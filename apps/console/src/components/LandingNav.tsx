@@ -1,7 +1,7 @@
 import type { ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { PRODUCT_NAME } from "../api";
-import { Arrow, SealMark } from "./ui";
+import { Wordmark } from "./ui";
 
 /** Keep section navigation separate from HashRouter's route fragment. */
 export function SectionLink({ id, children, className }: { id: string; children: ReactNode; className?: string }) {
@@ -11,33 +11,39 @@ export function SectionLink({ id, children, className }: { id: string; children:
     if (!target) return;
     event.preventDefault();
     event.currentTarget.closest("details")?.removeAttribute("open");
-    target.scrollIntoView({ block: "start", behavior: "instant" });
+    target.scrollIntoView({ block: "start", behavior: "smooth" });
     target.focus({ preventScroll: true });
   }}>{children}</a>;
 }
 
-const SECTIONS = [{ id: "why", label: "Why" }, { id: "how", label: "How it works" }, { id: "evidence", label: "Evidence" }, { id: "integrate", label: "Developers" }, { id: "faq", label: "FAQ" }];
+const SECTIONS = [{ id: "how", label: "How it works" }, { id: "evidence", label: "Evidence" }, { id: "integrate", label: "Developers" }, { id: "pricing", label: "Pricing" }, { id: "faq", label: "Questions" }];
 
 export function LandingHeader({ themeToggle }: { themeToggle: ReactNode }) {
-  return <header className="landing-header">
-    <div className="landing-header-inner">
-      <Link to="/" className="landing-brand" aria-label={`${PRODUCT_NAME} home`} onClick={(event) => {
-        if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) window.scrollTo({ top: 0, behavior: "instant" });
-      }}><SealMark /><span className="brand-text">{PRODUCT_NAME}</span></Link>
-      <nav className="landing-desktop-nav" aria-label="Product">{SECTIONS.map((s) => <SectionLink key={s.id} id={s.id}>{s.label}</SectionLink>)}</nav>
-      <details className="landing-menu"><summary>Menu</summary><nav aria-label="Mobile product">
+  return <header className="lg-header">
+    <div className="lg-wrap lg-header-inner">
+      <Link to="/" aria-label={`${PRODUCT_NAME} home`} onClick={(event) => {
+        if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey) window.scrollTo({ top: 0, behavior: "smooth" });
+      }}><Wordmark /></Link>
+      <nav className="lg-nav" aria-label="Product">{SECTIONS.map((s) => <SectionLink key={s.id} id={s.id}>{s.label}</SectionLink>)}</nav>
+      <div className="lg-header-actions">
+        <span className="lg-theme">{themeToggle}</span>
+        <Link to="/decisions" className="lg-signin">Console</Link>
+        <Link to="/delegate" className="pill pill-primary pill-sm">Run a live task</Link>
+      </div>
+      <details className="lg-menu"><summary>Menu</summary><nav aria-label="Mobile product">
         {SECTIONS.map((s) => <SectionLink key={s.id} id={s.id}>{s.label}</SectionLink>)}
-        <Link to="/decisions">Open console</Link><div>{themeToggle}</div>
+        <Link to="/decisions">Console</Link><div>{themeToggle}</div>
       </nav></details>
-      <div className="landing-header-actions"><Link to="/decisions" className="landing-console-link">Open console ↗</Link><span className="landing-theme">{themeToggle}</span><Link to="/delegate" className="pill pill-primary"><span className="landing-demo-long">Start free trial</span><span className="landing-demo-short">Try it</span><Arrow /></Link></div>
     </div>
   </header>;
 }
 
 export function LandingFooter() {
-  return <footer className="landing-footer">
-    <div><span className="brand-text">{PRODUCT_NAME}</span><p>Hand off the task. Approve it once.</p></div>
-    <nav aria-label="Footer"><Link to="/delegate">Start free trial</Link><Link to="/decisions">Console</Link><SectionLink id="evidence">Evidence</SectionLink><SectionLink id="integrate">Developers</SectionLink><SectionLink id="faq">FAQ</SectionLink></nav>
-    <p className="landing-footnote">Built with Gemini on Vertex AI, Google ADK and Model Armor · Demo actions run in a sandbox · Rules decide, AI advises</p>
+  return <footer className="lg-footer">
+    <div className="lg-wrap lg-footer-inner">
+      <div><Wordmark /><p>Hand off the task. Approve it once.</p></div>
+      <nav aria-label="Footer"><Link to="/delegate">Run a live task</Link><Link to="/agents">Your agents</Link><Link to="/decisions">Console</Link><SectionLink id="evidence">Evidence</SectionLink><SectionLink id="integrate">Developers</SectionLink><a href="https://github.com/sankalp2515/Abide" rel="noreferrer" target="_blank">GitHub</a></nav>
+      <p className="lg-footnote">Built on Google Cloud: Gemini on Vertex AI, Agent Development Kit, Model Armor, Cloud Run, Cloud SQL, BigQuery · Demo actions run in a sandbox · Rules decide, Gemini explains</p>
+    </div>
   </footer>;
 }

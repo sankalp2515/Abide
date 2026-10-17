@@ -79,3 +79,13 @@ Deployed to project intentseal, region us-central1 (4 GiB, 2 CPU, scale to zero,
 
 Live on Cloud Run with Cloud SQL PostgreSQL: 14/14 end-to-end checks (Gemini explained both blocked actions of the hijacked agent). After a new revision (all memory gone) the trial key, the workspace, the card and its receipts were still there (2/2). A subtle injection sent to /v1/inspect was held at tier 2 by the Gemini judge (2.8 s). Bring-your-own agent with the client downloaded from the live service: the injected email was stopped, the real one sent, a LangChain tool held to the same card, receipt chain intact (3/3). pytest 206 passed, 5 skipped; ruff clean; Console 8/8.
 
+
+## The Ledger frontend and Your agents page (18 Oct 2026, local, not deployed)
+
+- Local dev stack with live Gemini agents (Vertex AI) and Model Armor.
+- Walkthrough: 18/18 steps, now with live agents rather than stand-ins (screenshots refreshed in docs/walkthrough).
+- A local agent process drove the new Your agents page: the employee confirmed its work order in the browser; the injected send was stopped; the named recipient got the message; the unnamed colleague waited; the employee approved in the browser and the agent's retry ran. Result: PASS.
+- Every page at desktop, phone (390 px) and dark: no horizontal overflow. The only failing request was BigQuery insights, which now answers 'not configured' instead of 404.
+- Bug found and fixed: the Gemini explanation was written after the question existed, so a quick approval could be lost with live agents. The explanation now comes first (test added).
+- pytest 212 passed, 5 skipped; ruff clean; Console tsc clean, 8/8 tests; production build ok.
+

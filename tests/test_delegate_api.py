@@ -143,3 +143,17 @@ def test_delegations_are_private_to_their_owner(client, monkeypatch):
 def test_demo_can_be_switched_off(client, monkeypatch):
     monkeypatch.setenv("INTENTSEAL_DELEGATE_DEMO", "0")
     assert client.post("/v1/delegate-demo", json={}, headers=H(PROJECT)).status_code == 404
+
+
+def test_the_task_list_shows_each_task_once_with_what_the_your_agents_page_needs(client):
+    s = client.post("/v1/delegations", json={"request": "Read the quote"}, headers=H(PROJECT)).json()
+    wf = s["workflow"]["id"]
+    client.post(f"/v1/delegations/{wf}/confirm", json={"hash": s["contract"]["hash"]}, headers=H(PROJECT))
+    client.post(f"/v1/delegations/{wf}/check", json={"agent": "a", "tool": "wire_money", "args": {"to": "x"}},
+                headers=H(PROJECT))
+    rows = [w for w in client.get("/v1/delegations", headers=H(PROJECT)).json() if w["id"] == wf]
+    assert len(rows) == 1                                   # one store, one row: not once per business
+    row = rows[0]
+    assert row["request"] == "Read the quote" and row["status"] == "confirmed" and row["source"] == "api"
+    assert row["stopped"] == 1 and row["waiting"] == 0 and row["business"]
+    assert client.get("/v1/insights", headers=H(PROJECT)).json()["configured"] is False   # no BigQuery here

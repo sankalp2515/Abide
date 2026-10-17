@@ -515,6 +515,7 @@ class DelegateService:
         elif self._ask_before(ruling):
             decision = "ask"
             reason = "Company rule: confirm before this leaves the company"
+        explanation = ""
         if decision == "ask":
             stale = time.time() - self.approval_ttl_s     # G3: a confirmation is for now, not for later
             self.store.execute("UPDATE delegate_approvals SET status = 'expired' WHERE workflow_id = ? AND status IN "
@@ -531,17 +532,19 @@ class DelegateService:
                 if pending:
                     approval_id = pending[0]["id"]
                 else:
+                    # Words first, question second: once the question exists the employee can answer it, and the
+                    # agent must already be waiting for that answer (a slow explanation in between lost approvals).
+                    explanation = await self._explain(c, tool, summary, decision, reason, data.get("traced_to"))
                     approval_id = "A-" + uuid.uuid4().hex[:8]
                     self.store.execute("INSERT INTO delegate_approvals VALUES (?,?,?,?,?,?,?,?,?,?,?,?,?)",
                                        (approval_id, workflow_id, action_hash, c.hash, tool,
                                         json.dumps(args, ensure_ascii=False, default=str), agent, reason, "pending",
                                         time.time(), None, None, None))
         data["approval"] = approval_id
-        explanation = ""
-        if decision != "allow" and self.explainer is not None:   # decided already: the explainer only words it
-            explanation = await self.explainer.explain(c.request, tool, summary, decision, reason, data.get("traced_to"))
-            if explanation:
-                data["explanation"] = {"text": explanation, "by": self.explainer.name}
+        if decision != "allow" and not explanation:   # decided already: the explainer only words it
+            explanation = await self._explain(c, tool, summary, decision, reason, data.get("traced_to"))
+        if explanation:
+            data["explanation"] = {"text": explanation, "by": self.explainer.name}
         rid = self._receipt(workflow_id, "check", agent=agent, tool=tool, decision=decision, reason=reason, data=data)
         out = {"decision": decision, "receipt": rid, "reason": reason, "ruling": ruling.as_dict(),
                "action_hash": action_hash, "approval": approval_id, "traced_to": data.get("traced_to"),
@@ -552,6 +555,12 @@ class DelegateService:
         elif decision == "ask":
             out["notice"] = NOTICE_ASK.format(approval=approval_id)
         return out
+
+    async def _explain(self, c: DelegationContract, tool: str, args: dict[str, Any], decision: str, reason: str,
+                       traced_to: str | None) -> str:
+        if self.explainer is None:
+            return ""
+        return await self.explainer.explain(c.request, tool, args, decision, reason, traced_to)
 
     def approvals(self, workflow_id: str, status: str | None = None) -> list[dict[str, Any]]:
         sql, params = "SELECT * FROM delegate_approvals WHERE workflow_id = ?", [workflow_id]

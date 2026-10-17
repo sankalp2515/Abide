@@ -81,7 +81,7 @@ def main() -> None:
         expect(page.get_by_role("button", name="Yes, do this")).to_be_visible(timeout=SLOW)
         shot(page, "07-office-question")
         page.get_by_role("button", name="Yes, do this").click()
-        expect(page.get_by_text("Done after you confirmed")).to_be_visible(timeout=SLOW)
+        expect(page.get_by_text("Ran · you confirmed")).to_be_visible(timeout=SLOW)
         shot(page, "08-office-sent")
 
         # Journey B: office, content filter off, decline the send

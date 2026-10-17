@@ -1,9 +1,10 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
 import { Link, NavLink, useLocation } from "react-router-dom";
-import { agentName, api, PRODUCT_NAME } from "../api";
+import { api, PRODUCT_NAME } from "../api";
+import { useEmployee } from "../employee";
 import { useReviewer } from "../reviewer";
 import { ReviewerSignIn } from "./ReviewerSignIn";
-import { SealMark } from "./ui";
+import { Wordmark } from "./ui";
 import { LandingFooter, LandingHeader } from "./LandingNav";
 
 type Status = "checking" | "ok" | "waking" | "down";
@@ -46,10 +47,10 @@ function StatusBanner({ status }: { status: Status }) {
   const waking = status === "waking";
   const tone = waking ? "var(--neutralise)" : "var(--block)";
   return (
-    <div role="status" className="mx-4 mb-3 rounded-2xl border px-4 py-3 text-[13px] sm:mx-8" style={{ borderColor: `color-mix(in srgb, ${tone} 45%, transparent)`, color: tone }}>
+    <div role="status" className="mb-6 rounded-md border px-4 py-3 text-[14px]" style={{ borderColor: tone, color: tone, background: waking ? "var(--wait-wash)" : "var(--block-wash)" }}>
       {waking
-        ? "The security backend is waking up (free hosting sleeps when idle). This can take 2–3 minutes."
-        : "The security backend is unavailable. Results shown may be out of date; live runs are paused."}
+        ? "The service is waking up (it sleeps when idle to save cost). This can take up to a minute."
+        : "The service is unavailable. Results shown may be out of date; live runs are paused."}
     </div>
   );
 }
@@ -73,8 +74,8 @@ function useTheme() {
 
 function ThemeToggle({ dark, toggle }: { dark: boolean; toggle: () => void }) {
   return (
-    <button className="pill pill-sm" style={{ minHeight: 40, width: 40, padding: 0 }} onClick={toggle}
-      aria-label={dark ? "Switch to light theme" : "Switch to dark theme"} title={dark ? "Light theme" : "Dark theme"}>
+    <button className="pill pill-sm" style={{ minHeight: 36, width: 36, padding: 0, borderWidth: 1 }} onClick={toggle}
+      aria-label={dark ? "Switch to ledger paper (light)" : "Switch to night shift (dark)"} title={dark ? "Light" : "Night shift"}>
       <svg viewBox="0 0 20 20" aria-hidden>
         {dark ? <><circle cx="10" cy="10" r="3.5" /><path d="M10 1.5v2M10 16.5v2M1.5 10h2M16.5 10h2M4 4l1.4 1.4M14.6 14.6 16 16M4 16l1.4-1.4M14.6 5.4 16 4" /></>
               : <path d="M16 12.5A7 7 0 0 1 7.5 4a7 7 0 1 0 8.5 8.5Z" />}
@@ -83,54 +84,79 @@ function ThemeToggle({ dark, toggle }: { dark: boolean; toggle: () => void }) {
   );
 }
 
-const NAV = [
-  { to: "/", label: "Overview" },
-  { to: "/delegate", label: "Delegate" },
-  { to: "/setup", label: "Agents" },
-  { to: "/replay", label: "Replay" },
-  { to: "/decisions", label: "Decisions" },
-  { to: "/review", label: "Review" },
-  { to: "/policy", label: "Policy" },
+const ICON: Record<string, ReactNode> = {
+  tasks: <><rect x="4" y="3" width="16" height="18" rx="1.5" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+  activity: <path d="M4 18l5-6 4 3 7-9" />,
+  agents: <path d="M9 7H6a4 4 0 000 8h3M15 7h3a4 4 0 010 8h-3M8 11h8" />,
+  business: <path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6" />,
+};
+
+const NAV: { label: string; icon: string; to: string; children?: { to: string; label: string }[] }[] = [
+  { label: "Tasks", icon: "tasks", to: "/delegate", children: [{ to: "/delegate", label: "Run a task" }, { to: "/agents", label: "Your agents" }] },
+  { label: "Activity", icon: "activity", to: "/decisions", children: [{ to: "/decisions", label: "Decisions" }, { to: "/replay", label: "Replay" }, { to: "/review", label: "Review" }] },
+  { label: "Agents and tools", icon: "agents", to: "/setup" },
+  { label: "Your business", icon: "business", to: "/policy" },
 ];
 
-/** Header indicator: which agents sent traffic through the gateway in the last 24 hours. */
-function AgentsIndicator() {
-  const [active, setActive] = useState<string[] | null>(null);
-  const [total, setTotal] = useState(0);
-  useEffect(() => {
-    let alive = true;
-    const load = async () => {
-      try {
-        const [agents, rows] = await Promise.all([api.agents(), api.decisions({ limit: "200", since: String(Date.now() / 1000 - 86400) })]);
-        if (!alive) return;
-        const seen = new Set(rows.map((r) => r.agent_id));
-        setTotal(agents.length);
-        setActive(agents.map((a) => a.agent).filter((a) => seen.has(a)));
-      } catch {
-        if (alive) setActive(null);
-      }
-    };
-    load();
-    const id = setInterval(load, 30000);
-    return () => { alive = false; clearInterval(id); };
-  }, []);
-  if (active === null) return null;
-  const names = active.map(agentName);
+function KeyChip() {
+  const employee = useEmployee();
+  const [copied, setCopied] = useState(false);
+  if (!employee) return null;
+  const masked = `${employee.key.slice(0, 10)}••••${employee.key.slice(-4)}`;
   return (
-    <Link to="/setup" className="subtle hidden items-center gap-2 whitespace-nowrap text-xs 2xl:flex" title={names.length ? `Active in the last 24 hours: ${names.join(", ")}` : "No agent traffic in the last 24 hours"}>
-      <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full" style={{ background: active.length ? "var(--allow)" : "var(--subtle)" }} />
-      {active.length ? <>
-        <span className="2xl:hidden">{active.length} of {total} agents active</span>
-        <span className="hidden 2xl:inline">{names.slice(0, 2).join(" · ")}{names.length > 2 ? ` +${names.length - 2}` : ""} active</span>
-      </> : `${total} agents · no traffic today`}
-    </Link>
+    <div className="flex flex-col gap-1.5">
+      <span className="section-label">Your key</span>
+      <span className="mono" style={{ fontSize: 12 }}>{masked}</span>
+      <button className="pill pill-sm" style={{ borderWidth: 1 }} onClick={async () => {
+        try { await navigator.clipboard.writeText(employee.key); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* no clipboard */ }
+      }}>{copied ? "Copied" : "Copy key for your agent"}</button>
+    </div>
+  );
+}
+
+function Sidebar({ status, theme }: { status: Status; theme: ReturnType<typeof useTheme> }) {
+  const reviewer = useReviewer();
+  const { pathname } = useLocation();
+  return (
+    <aside className="lg:sticky lg:top-0 lg:h-screen lg:w-[256px] lg:shrink-0 lg:overflow-y-auto" style={{ background: "var(--bg-2)", borderRight: "1px solid var(--line)" }}>
+      <div className="flex items-center justify-between gap-3 px-4 py-4 lg:px-5 lg:py-5">
+        <Link to="/" aria-label={`${PRODUCT_NAME} home`}><Wordmark /></Link>
+        <div className="flex items-center gap-2 lg:hidden"><ThemeToggle {...theme} /><Link to="/delegate" className="pill pill-primary pill-sm">New task</Link></div>
+      </div>
+      <div className="hidden px-4 pb-3 lg:block"><Link to="/delegate" className="pill pill-primary w-full">New task</Link></div>
+      <nav aria-label="App" className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
+        {NAV.map((n) => {
+          const inGroup = n.children ? n.children.some((c) => pathname === c.to) : pathname === n.to;
+          return (
+            <div key={n.label} className="flex shrink-0 gap-1 lg:flex-col">
+              <NavLink to={n.to} end className={() => `nav-link ${inGroup && !n.children ? "active" : ""}`} aria-current={inGroup && !n.children ? "page" : undefined}>
+                <svg viewBox="0 0 24 24" aria-hidden>{ICON[n.icon]}</svg>{n.label}
+              </NavLink>
+              {n.children && <div className="flex gap-1 lg:flex-col">
+                {n.children.map((c) => <NavLink key={c.to} to={c.to} end className={({ isActive }) => `nav-link nav-sub ${isActive ? "active" : ""}`}>{c.label}</NavLink>)}
+              </div>}
+            </div>
+          );
+        })}
+      </nav>
+      <div className="hidden flex-col gap-5 border-t px-5 py-5 lg:mt-6 lg:flex" style={{ borderColor: "var(--line)" }}>
+        <KeyChip />
+        <div className="flex items-center justify-between gap-2">
+          <span className="subtle flex items-center gap-2 text-[13px]" aria-live="polite">
+            <span aria-hidden className="inline-block h-2 w-2 rounded-full" style={{ background: status === "ok" ? "var(--allow)" : status === "checking" ? "var(--subtle)" : "var(--block)" }} />
+            {status === "ok" ? "Service online" : status === "checking" ? "Checking" : status === "waking" ? "Waking" : "Offline"}
+          </span>
+          <ThemeToggle {...theme} />
+        </div>
+        {reviewer && <ReviewerSignIn />}
+      </div>
+    </aside>
   );
 }
 
 export function Layout({ children }: { children: ReactNode }) {
   const theme = useTheme();
   const status = useBackendStatus();
-  const reviewer = useReviewer();
   const { pathname, search } = useLocation();
   const landing = pathname === "/";
   useEffect(() => {
@@ -139,50 +165,37 @@ export function Layout({ children }: { children: ReactNode }) {
     if (target) { target.scrollIntoView({ behavior: "instant" }); target.focus({ preventScroll: true }); }
     else window.scrollTo({ top: 0, behavior: "instant" });
   }, [pathname, search]);
+  const skip = <a href={landing ? "#/?section=main" : `#${pathname}`} className="sr-only skip pill" onClick={(event) => {
+    event.preventDefault();
+    document.getElementById("main")?.focus();
+    document.getElementById("main")?.scrollIntoView({ behavior: "instant" });
+  }}>Skip to content</a>;
+  if (landing) {
+    return (
+      <BackendStatusContext.Provider value={status}><div className="min-h-screen">
+        {skip}
+        <LandingHeader themeToggle={<ThemeToggle {...theme} />} />
+        <main id="main" tabIndex={-1}>{children}</main>
+        <LandingFooter />
+      </div></BackendStatusContext.Provider>
+    );
+  }
   return (
-    <BackendStatusContext.Provider value={status}><div className="min-h-screen">
-      <a href={landing ? "#/?section=main" : `#${pathname}`} className="sr-only skip pill" onClick={(event) => {
-        event.preventDefault();
-        document.getElementById("main")?.focus();
-        document.getElementById("main")?.scrollIntoView({ behavior: "instant" });
-      }}>Skip to content</a>
-      {landing ? <LandingHeader themeToggle={<ThemeToggle {...theme} />} /> : <header className="sticky top-0 z-20 backdrop-blur-md" style={{ background: "color-mix(in srgb, var(--bg) 78%, transparent)" }}>
-        <div className="mx-auto flex max-w-[1440px] items-center gap-4 px-4 py-4 sm:px-8">
-          <Link to="/" className="flex items-center gap-2.5 text-[20px] tracking-tight" aria-label={`${PRODUCT_NAME} overview`}>
-            <span style={{ color: "var(--accent-soft)" }}><SealMark /></span>
-            <span className="brand-text">{PRODUCT_NAME}</span>
-          </Link>
-          <nav aria-label="Main" className="hidden flex-1 justify-center gap-1 lg:flex">
-            {NAV.map((n) => (
-              <NavLink key={n.to} to={n.to} end className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>{n.label}</NavLink>
-            ))}
-          </nav>
-          <div className="ml-auto flex items-center gap-3 lg:ml-0">
-            <span className="subtle hidden items-center gap-2 text-xs sm:flex" aria-live="polite">
-              <span aria-hidden className="inline-block h-1.5 w-1.5 rounded-full"
-                style={{ background: status === "ok" ? "var(--allow)" : status === "checking" ? "var(--subtle)" : "var(--block)" }} />
-              {status === "ok" ? "Backend online" : status === "checking" ? "Checking" : status === "waking" ? "Waking" : "Offline"}
-            </span>
-            <AgentsIndicator />
-            <ThemeToggle {...theme} />
-            {reviewer && <ReviewerSignIn />}
-            <Link to="/delegate" className="pill pill-primary pill-sm hidden xl:inline-flex">Delegate a task</Link>
+    <BackendStatusContext.Provider value={status}>
+      {skip}
+      <div className="min-h-screen lg:flex">
+        <Sidebar status={status} theme={theme} />
+        <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 py-8 sm:px-8 lg:px-12 lg:py-10">
+          <div className="mx-auto max-w-[1240px]">
+            <StatusBanner status={status} />
+            {children}
+            <footer className="subtle mt-16 flex flex-col gap-2 border-t pt-6 text-[12px] sm:flex-row sm:justify-between" style={{ borderColor: "var(--line)" }}>
+              <span>Rules decide, Gemini explains · demo actions run in a sandbox</span>
+              <span className="mono">abide · on Google Cloud</span>
+            </footer>
           </div>
-        </div>
-        <nav aria-label="Main (compact)" className="no-scrollbar flex gap-1 overflow-x-auto px-4 pb-3 sm:px-8 lg:hidden">
-          {NAV.map((n) => (
-            <NavLink key={n.to} to={n.to} end className={({ isActive }) => `nav-link ${isActive ? "active" : ""}`}>{n.label}</NavLink>
-          ))}
-        </nav>
-        <div className="h-px w-full" style={{ background: "var(--line)" }} />
-        <StatusBanner status={status} />
-      </header>}
-      <main id="main" tabIndex={-1} className={landing ? "landing-main" : "mx-auto max-w-[1440px] px-4 py-10 sm:px-8 sm:py-14"}>{children}</main>
-      {landing ? <LandingFooter /> : <footer className="mx-auto flex max-w-[1440px] flex-col gap-3 px-4 pb-10 pt-6 text-[11px] sm:flex-row sm:justify-between sm:px-8" style={{ color: "var(--subtle)", borderTop: "1px solid var(--line)" }}>
-        <span className="brand-text text-[15px]">{PRODUCT_NAME}</span>
-        <span>Catch what can be caught. Limit the damage. Prove what happened.</span>
-        <span>Demo actions run in a sandbox · rules decide, AI advises</span>
-      </footer>}
-    </div></BackendStatusContext.Provider>
+        </main>
+      </div>
+    </BackendStatusContext.Provider>
   );
 }

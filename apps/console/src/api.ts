@@ -1,6 +1,8 @@
 // Typed client for the Abide Gateway API. Uses the public read-only key (never an admin key in the browser).
 
 export const API_BASE: string = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8000";
+/** The service address an outside agent should call: the API base, or this page's origin when served together. */
+export const serviceOrigin = (): string => (API_BASE && /^https?:/.test(API_BASE) ? API_BASE.replace(/\/$/, "") : typeof window !== "undefined" ? window.location.origin : "");
 const API_KEY: string = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
 export const PRODUCT_NAME: string = (import.meta.env.VITE_PRODUCT_NAME as string | undefined) ?? "Abide";
 export const TAGLINE = "Hand off the task. Approve it once.";
@@ -320,7 +322,7 @@ export interface DApproval {
 }
 type Row = Record<string, string | number>;
 export interface Insights {
-  table: string; days: number; engine: string; query_ms: number; workflows: number;
+  configured?: boolean; table: string; days: number; engine: string; query_ms: number; workflows: number;
   decisions: Row[]; stopped_tools: Row[]; sources: Row[]; daily: Row[];
 }
 export interface DEvent { agent: string; tool: string; args: Record<string, unknown>; outcome: string; note: string; explain?: string }
@@ -353,7 +355,25 @@ export const delegate = {
   decide: (key: string, wf: string, approval: string, approve: boolean) =>
     call<{ status: string }>(`/v1/delegations/${encodeURIComponent(wf)}/approvals/${encodeURIComponent(approval)}`,
       { method: "POST", body: JSON.stringify({ approve }) }, key),
-  list: (key: string) => call<{ id: string; owner: string; created: number }[]>("/v1/delegations", undefined, key),
+  list: (key: string) => call<DTaskRow[]>("/v1/delegations", undefined, key),
+};
+
+/** Tasks your own agents run through the API (the "Your agents" page): the same work order, approvals and receipt. */
+export interface DTaskRow {
+  id: string; owner: string; created: number; workspace: string; business: string; request: string;
+  status: "draft" | "confirmed"; source: "demo" | "api"; allowed: number; stopped: number; asked: number; waiting: number;
+}
+const wfPath = (wf: string) => `/v1/delegations/${encodeURIComponent(wf)}`;
+export const tasks = {
+  list: (key: string) => call<DTaskRow[]>("/v1/delegations", undefined, key),
+  state: (key: string, wf: string) => call<DState>(wfPath(wf), undefined, key),
+  confirm: (key: string, wf: string, hash: string, accept: string[] = []) =>
+    call<DContract>(`${wfPath(wf)}/confirm`, { method: "POST", body: JSON.stringify({ hash, accept }) }, key),
+  amend: (key: string, wf: string, text: string) =>
+    call<DContract>(`${wfPath(wf)}/amend`, { method: "POST", body: JSON.stringify({ text }) }, key),
+  decide: (key: string, wf: string, approval: string, approve: boolean) =>
+    call<{ status: string }>(`${wfPath(wf)}/approvals/${encodeURIComponent(approval)}`, { method: "POST", body: JSON.stringify({ approve }) }, key),
+  report: (key: string, wf: string) => call<DReport>(`${wfPath(wf)}/report`, undefined, key),
 };
 
 /** Reviewer (admin-key) actions. The key is the reviewer's own, typed at sign-in; it is never part of the build. */

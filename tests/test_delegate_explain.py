@@ -60,3 +60,19 @@ def test_a_model_outage_leaves_the_decision_and_reason_unchanged():
     r = run(s.check(wf, "worker", "wire_money", {"to": "x", "amount": 5000}))
     assert r["decision"] == "block" and r["explanation"] is None and r["reason"]
     assert "explanation" not in [x for x in s.receipts(wf) if x["kind"] == "check"][-1]["data"]
+
+
+def test_a_question_is_explained_before_it_exists_so_an_answer_cannot_arrive_first():
+    """The employee can answer a question as soon as it exists; the agent must be waiting by then. A slow explanation
+    between the two lost approvals in the live demo, so the explanation is written first."""
+    seen = {}
+
+    class Router(FakeRouter):
+        async def chat(self, role, req):
+            seen["approvals_while_explaining"] = len(s.approvals(wf))
+            return await super().chat(role, req)
+    router = Router("Your assistant wants to email someone you did not name; it waits for you.")
+    s, wf = service(router)
+    r = run(s.check(wf, "worker", "send_email", {"to": "someone@elsewhere.example", "subject": "x", "body": "y"}))
+    assert r["decision"] == "ask" and r["explanation"]
+    assert seen["approvals_while_explaining"] == 0 and len(s.approvals(wf, "pending")) == 1

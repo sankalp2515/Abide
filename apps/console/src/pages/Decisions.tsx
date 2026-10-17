@@ -78,7 +78,7 @@ export function Decisions() {
         lede="Every inspection and tool-call decision from every connected agent, newest first. Content appears only as a redacted preview." />
       <Insights />
       <Card>
-        <div className="flex flex-col gap-4 md:flex-row md:items-end">
+        <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
           <label className="flex flex-col gap-2"><span className="section-label">Decision</span>
             <select className="input" value={filters.decision} onChange={(e) => setFilters((f) => ({ ...f, decision: e.target.value }))}>
               {["", "ALLOW", "NEUTRALISE", "BLOCK", "ESCALATE"].map((d) => <option key={d} value={d}>{d || "Any decision"}</option>)}
@@ -91,7 +91,7 @@ export function Decisions() {
             <select className="input" value={filters.window} onChange={(e) => setFilters((f) => ({ ...f, window: e.target.value }))}>
               {WINDOWS.map((w) => <option key={w.v} value={w.v}>{w.l}</option>)}
             </select></label>
-          <label className="flex flex-1 flex-col gap-2"><span className="section-label">Agent</span>
+          <label className="flex min-w-[200px] flex-1 flex-col gap-2"><span className="section-label">Agent</span>
             <select className="input" value={filters.agent} onChange={(e) => setFilters((f) => ({ ...f, agent: e.target.value }))}>
               <option value="">All agents</option>
               {(agents.data ?? []).map((a) => <option key={a.agent} value={a.agent}>{agentName(a.agent)}</option>)}
