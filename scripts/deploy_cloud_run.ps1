@@ -48,6 +48,14 @@ foreach ($role in "roles/aiplatform.user", "roles/modelarmor.user") {
   gcloud projects add-iam-policy-binding $Project --member="serviceAccount:$sa" --role=$role --condition=None | Out-Null
 }
 
+# Newer projects run Cloud Build as the default compute account: let it build, push and deploy as $sa.
+$num = gcloud projects describe $Project --format="value(projectNumber)"
+$builder = "serviceAccount:$num-compute@developer.gserviceaccount.com"
+foreach ($role in "roles/cloudbuild.builds.builder", "roles/run.admin") {
+  gcloud projects add-iam-policy-binding $Project --member=$builder --role=$role --condition=None | Out-Null
+}
+gcloud iam service-accounts add-iam-policy-binding $sa --member=$builder --role=roles/iam.serviceAccountUser $P | Out-Null
+
 function Ensure-Secret([string]$Name, [scriptblock]$Value) {
   if (-not (gcloud secrets list --filter="name~$Name" --format="value(name)" $P)) {
     (& $Value) | gcloud secrets create $Name --data-file=- --replication-policy=automatic $P

@@ -36,8 +36,9 @@ steps:
       - --region=${_REGION}
       - --service-account=${_SA}
       - --allow-unauthenticated          # the Console is public read-only; every write needs an API key
-      - --memory=2Gi
-      - --cpu=1
+      - --memory=4Gi
+      - --cpu=2
+      - --cpu-boost                      # faster cold start while the models load
       - --min-instances=0
       - --max-instances=1                # the demo keeps live sandboxes in memory: one instance
       - --port=8000

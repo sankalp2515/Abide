@@ -1,4 +1,4 @@
-# Deploying Abide to Cloud Run
+﻿# Deploying Abide to Cloud Run
 
 One Cloud Run service runs the gateway API, the Console (served at `/`) and the live demo. Cloud Build builds the image,
 so nothing heavy runs on your machine. Gemini (Vertex AI) and Model Armor are called with the service's own identity:
@@ -21,7 +21,7 @@ there is no model API key to store or rotate.
 ## Deploy
 
 ```powershell
-.\scripts\deploy_cloud_run.ps1 -Project <your-intentseal-project> -Region asia-southeast1
+.\scripts\deploy_cloud_run.ps1 -Project <your-intentseal-project> -Region us-central1
 ```
 
 Every command names the project explicitly; your active gcloud project is never read or changed. The script enables

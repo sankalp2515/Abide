@@ -1,11 +1,14 @@
-# Only what the image copies; everything else stays out of the build context.
+﻿# Only what the image copies; everything else stays out of the build context.
 *
 !requirements.lock
 !packages/
 !services/
 !config/
 !policies/
-!eval/reports/*.json
+!eval/
+eval/*
+!eval/reports/
+!apps/
 !apps/console/
 apps/console/node_modules/
 apps/console/dist/

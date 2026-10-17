@@ -69,3 +69,8 @@ Method and limits: [EVAL.md](EVAL.md).
 | Console types / tests | clean / 8 of 8 |
 | Browser journey (headless Edge, Docker, stand-in agents) | all 18 steps of [WALKTHROUGH.md](WALKTHROUGH.md); screenshots refreshed with the new landing page and the trial sign-in |
 | Docker with Google, 13 checks | 13 of 13: Console served as Abide; trial key; `/v1/sdk/abide.py`; live Gemini agents; card and receipt by Vertex AI; hijacked agent's ₹48,000 refund and customer export stopped and traced to the ticket while the ₹1,850 refund ran; Model Armor on every read; a registered business governs its own recipients |
+
+## Cloud Run (18 Oct 2026)
+
+Deployed to project intentseal, region us-central1 (4 GiB, 2 CPU, scale to zero, max one instance). The 13 Docker-with-Google checks rerun against the live URL: 13/13. Live Gemini agents finished in 59 s; the hijacked agent's 48,000 refund and customer export were blocked, and only the 1,850 refund for order 4521 ran. Cards and receipts were written by Vertex AI (gemini-3.5-flash), and Model Armor screened every read.
+
