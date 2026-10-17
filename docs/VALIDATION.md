@@ -74,3 +74,8 @@ Method and limits: [EVAL.md](EVAL.md).
 
 Deployed to project intentseal, region us-central1 (4 GiB, 2 CPU, scale to zero, max one instance). The 13 Docker-with-Google checks rerun against the live URL: 13/13. Live Gemini agents finished in 59 s; the hijacked agent's 48,000 refund and customer export were blocked, and only the 1,850 refund for order 4521 ran. Cards and receipts were written by Vertex AI (gemini-3.5-flash), and Model Armor screened every read.
 
+
+## Gemini in every stage, Cloud SQL, framework adapters (18 Oct 2026)
+
+Live on Cloud Run with Cloud SQL PostgreSQL: 14/14 end-to-end checks (Gemini explained both blocked actions of the hijacked agent). After a new revision (all memory gone) the trial key, the workspace, the card and its receipts were still there (2/2). A subtle injection sent to /v1/inspect was held at tier 2 by the Gemini judge (2.8 s). Bring-your-own agent with the client downloaded from the live service: the injected email was stopped, the real one sent, a LangChain tool held to the same card, receipt chain intact (3/3). pytest 206 passed, 5 skipped; ruff clean; Console 8/8.
+
