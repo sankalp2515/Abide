@@ -1,4 +1,4 @@
-"""IntentSeal Delegate M3–M5: intake, confirmation, handoff seal, gate decisions, bound approvals, receipts."""
+"""Abide M3–M5: intake, confirmation, handoff seal, gate decisions, bound approvals, receipts."""
 
 import asyncio
 

@@ -1,4 +1,4 @@
-"""IntentSeal Delegate, the Ravi scenario from the command line. Runs locally; no network, no Docker.
+"""Abide, the Ravi scenario from the command line. Runs locally; no network, no Docker.
 
     python -m examples.delegate_demo.run                                  # all three arms
     python -m examples.delegate_demo.run --arm delegate --firewall off    # the gate alone (detector off)

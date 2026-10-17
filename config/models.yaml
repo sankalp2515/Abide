@@ -87,7 +87,7 @@ roles:
       - { provider: gemini,     model: gemini-3.1-flash-lite }
       - { provider: nvidia,     model: nvidia/nemotron-3-super-120b-a12b }
 
-  # ---- IntentSeal Delegate (Google build): Gemini drafts the contract, writes the receipt and runs the agents ----
+  # ---- Abide (Google build): Gemini drafts the contract, writes the receipt and runs the agents ----
   # The drafter's and writer's output is a proposal: the grounding validator and the receipt check decide.
   contract:
     cache: true

@@ -58,6 +58,7 @@ def test_empty_placeholder_in_home_env_does_not_hide_project_key(tmp_path, monke
     """`intentseal init` writes empty provider placeholders to ~/.intentseal/.env; a key in the project's .env wins."""
     from intentseal_core import config
 
+    monkeypatch.delenv("INTENTSEAL_NO_DOTENV", raising=False)     # this test is about reading .env files
     home, project = tmp_path / "home", tmp_path / "project"
     home.mkdir()
     project.mkdir()

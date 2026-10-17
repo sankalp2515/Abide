@@ -1,6 +1,6 @@
 # intentseal-core
 
-The engine behind [IntentSeal](https://pypi.org/project/intentseal/), a prompt-injection firewall for AI agents:
+The engine behind [Abide](https://pypi.org/project/intentseal/), a prompt-injection firewall for AI agents:
 content extraction for every format (PDF, Word, HTML, email, Markdown, JSON, code, images via OCR), normalisation and
 decoding, a three-tier detector (structural rules, a local classifier, an AI judge), session risk and data-flow
 tracking, the action guard and the decision log.

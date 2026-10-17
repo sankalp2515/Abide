@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "intentseal"
 version = "0.1.0"
-description = "IntentSeal: a prompt-injection firewall for AI agents. Inspect what your agent reads, check what it does."
+description = "Abide: a prompt-injection firewall for AI agents. Inspect what your agent reads, check what it does."
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"
@@ -22,7 +22,7 @@ classifiers = [
   "Topic :: Security",
   "Topic :: Scientific/Engineering :: Artificial Intelligence",
 ]
-# Remote mode (a shared IntentSeal gateway) needs only this. The publish workflow keeps the two versions equal.
+# Remote mode (a shared Abide gateway) needs only this. The publish workflow keeps the two versions equal.
 dependencies = ["intentseal-core==0.1.0", "httpx>=0.27"]
 
 [project.optional-dependencies]

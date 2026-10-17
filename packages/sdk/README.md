@@ -1,6 +1,6 @@
-# IntentSeal
+# Abide
 
-**A prompt-injection firewall for AI agents.** IntentSeal inspects everything your agent reads (user messages, web
+**A prompt-injection firewall for AI agents.** Abide inspects everything your agent reads (user messages, web
 pages, PDFs, Word files, emails, Markdown, HTML, API responses, OCR text, source code, images, retrieved RAG passages)
 before the model sees it, and checks every tool call before it runs. It keeps the agent inside the user's intent.
 
@@ -20,7 +20,7 @@ before the model sees it, and checks every tool call before it runs. It keeps th
 ## Install
 
 ```bash
-pip install intentseal                 # talks to an IntentSeal gateway (remote mode): small install
+pip install intentseal                 # talks to an Abide gateway (remote mode): small install
 pip install "intentseal[embedded]"     # runs the engine in your process (PDF/Word/HTML extraction, classifier, OCR)
 pip install "intentseal[langchain]"    # LangChain / LangGraph tool helper
 ```

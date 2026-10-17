@@ -1,4 +1,4 @@
-"""LLM proxy (PRX-1…PRX-6): put IntentSeal between an unmodified agent and its model, by base URL alone.
+"""LLM proxy (PRX-1…PRX-6): put Abide between an unmodified agent and its model, by base URL alone.
 
 Two wire formats, one checkpoint:
   OpenAI-compatible   POST /proxy/<agent>/v1/chat/completions        OPENAI_BASE_URL=<gateway>/proxy/<agent>/v1

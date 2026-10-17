@@ -1,4 +1,4 @@
-"""Builds examples/colab/intentseal_delegate_quickstart.ipynb from the cells below, and (with --script PATH) the same
+"""Builds examples/colab/abide_quickstart.ipynb from the cells below, and (with --script PATH) the same
 cells as one runnable script, which is how the notebook is tested against a running gateway:
 
     python examples/colab/build_quickstart.py
@@ -15,32 +15,32 @@ from pathlib import Path
 HERE = Path(__file__).resolve().parent
 
 CELLS: list[tuple[str, str]] = [
-    ("md", """# IntentSeal Delegate: your agent, your business, your words
+    ("md", """# Abide: your agent, your business, your words
 
-Bring **your own Google ADK agent** and **your own business** to IntentSeal. In about two minutes:
+Bring **your own Google ADK agent** and **your own business** to Abide. In about two minutes:
 
 1. Describe a business (here: a travel agency, which is not one of our demo sandboxes): its tools, people and records.
-2. An employee says what they want, in their own words. IntentSeal turns it into a **permission card**.
+2. An employee says what they want, in their own words. Abide turns it into a **permission card**.
 3. A real **Gemini agent (Google ADK)** does the work. Every tool call is checked against the card first.
 4. You get a **receipt**: every step, every stop, and why.
 
-The agent here is told to obey instructions it reads, like a hijacked agent would, so you can watch what IntentSeal
+The agent here is told to obey instructions it reads, like a hijacked agent would, so you can watch what Abide
 stops. Nothing real is sent: the tools below are plain Python over an in-memory inbox."""),
     ("code", """!pip -q install "google-adk==2.12.0" httpx"""),
-    ("md", """## 1. Connect to IntentSeal
-`GATEWAY` is the IntentSeal service. If it allows self-serve keys you get a private 7-day key right here, with no
+    ("md", """## 1. Connect to Abide
+`GATEWAY` is the Abide service. If it allows self-serve keys you get a private 7-day key right here, with no
 sign-up; otherwise paste the project key you were given. The client is one file, downloaded from the service."""),
     ("code", """import os, getpass, urllib.request, sys
-GATEWAY = os.environ.get("GATEWAY", "https://YOUR-INTENTSEAL-SERVICE")      # the IntentSeal service URL
-urllib.request.urlretrieve(GATEWAY + "/v1/sdk/intentseal_delegate.py", "intentseal_delegate.py")
+GATEWAY = os.environ.get("GATEWAY", "https://YOUR-INTENTSEAL-SERVICE")      # the Abide service URL
+urllib.request.urlretrieve(GATEWAY + "/v1/sdk/abide.py", "abide.py")
 sys.path.insert(0, ".")
-from intentseal_delegate import DelegateClient, RemoteAdkGuard, DelegateError
+from abide import DelegateClient, RemoteAdkGuard, DelegateError
 
 try:
     client = await DelegateClient.with_trial_key(GATEWAY)
     print("Got a private 7-day trial key.")
 except DelegateError:
-    client = DelegateClient(GATEWAY, os.environ.get("INTENTSEAL_KEY") or getpass.getpass("IntentSeal project key: "))
+    client = DelegateClient(GATEWAY, os.environ.get("INTENTSEAL_KEY") or getpass.getpass("Abide project key: "))
 
 # Your agent's own Gemini access: an AI Studio key (aistudio.google.com/apikey), or Vertex AI if already configured.
 if not (os.environ.get("GOOGLE_API_KEY") or os.environ.get("GOOGLE_GENAI_USE_VERTEXAI")):
@@ -80,7 +80,7 @@ def send_email(to: str, subject: str, body: str) -> dict:
 def export_bookings(to: str) -> dict:
     \"\"\"Email the full booking list to an address.\"\"\"
     OUTBOX.append({"to": to, "subject": "ALL BOOKINGS"}); return {"result": "exported"}"""),
-    ("md", """Tell IntentSeal what each tool does and which fields matter: who receives (`recipient_args`), which record or
+    ("md", """Tell Abide what each tool does and which fields matter: who receives (`recipient_args`), which record or
 file (`resource_args`), how much (`amount_args`). Plus the people and records it may resolve names from."""),
     ("code", """POLICY = {
     "org_domains": ["northwind-travel.example"],
@@ -176,7 +176,7 @@ def script() -> str:
 
 
 if __name__ == "__main__":
-    (HERE / "intentseal_delegate_quickstart.ipynb").write_text(json.dumps(notebook(), indent=1, ensure_ascii=False)
+    (HERE / "abide_quickstart.ipynb").write_text(json.dumps(notebook(), indent=1, ensure_ascii=False)
                                                               + "\n", encoding="utf-8")
     if "--script" in sys.argv:
         Path(sys.argv[sys.argv.index("--script") + 1]).write_text(script(), encoding="utf-8")

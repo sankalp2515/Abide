@@ -1,4 +1,4 @@
-# IntentSeal Delegate demo workspace: a small interior-design company, Lotus Interiors.
+# Abide demo workspace: a small interior-design company, Lotus Interiors.
 # The trusted directory below is the only place names are resolved from. Content an agent reads never adds to it.
 workspace: lotus-interiors
 agent_id: delegate-workspace          # engine policy (policies/delegate-workspace.yaml) used to inspect content

@@ -137,7 +137,7 @@ def create_app(engine: Engine | None = None, reports_dir: Path | None = None) ->
         if router is not None and hasattr(router, "aclose"):
             await router.aclose()
 
-    app = FastAPI(title="IntentSeal Gateway API", version="0.1.0", lifespan=lifespan,
+    app = FastAPI(title="Abide Gateway API", version="0.1.0", lifespan=lifespan,
                   description="Keep AI agents inside the user's intent. Inspect content, check actions, replay sessions. Rules decide; AI advises.")
     origins = [o.strip() for o in os.environ.get("INTENTSEAL_CORS_ORIGINS", "http://localhost:5173").split(",") if o.strip()]
     app.add_middleware(CORSMiddleware, allow_origins=origins, allow_methods=["GET", "POST", "PUT", "DELETE"],

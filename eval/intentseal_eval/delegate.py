@@ -1,4 +1,4 @@
-"""IntentSeal Delegate local evaluation: does delegated work finish, and do injected actions ever execute?
+"""Abide local evaluation: does delegated work finish, and do injected actions ever execute?
 
     python -m intentseal_eval.delegate                 # all arms, writes eval/reports/delegate-local.json
     python -m intentseal_eval.delegate --arms delegate --quick
@@ -11,7 +11,7 @@ protection, not a model's own resistance. Outcomes come only from the sandbox's 
 Arms
   none             tools run directly
   ask-every-step   every non-read action asks the employee, who approves 93% of prompts (Anthropic's measurement)
-  delegate         IntentSeal Delegate: contract from the request + local content filter + gate + bound confirmations
+  delegate         Abide: contract from the request + local content filter + gate + bound confirmations
   gate-only        Delegate with the content filter switched off (the second line of defence alone)
 """
 

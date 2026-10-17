@@ -1,0 +1,197 @@
+/* Abide workspace: Ask -> Confirm once -> Agents work -> Receipt, on one page. Uses the tokens in index.css only. */
+
+.landing-header-actions { margin-left: auto; }
+.ab-status { display: inline-flex; align-items: center; gap: 8px; font-size: 12px; color: var(--subtle); }
+.ab-status > span { width: 7px; height: 7px; border-radius: 50%; display: inline-block; }
+.ab-banner-top { max-width: 1376px; margin: 12px auto 0; padding: 12px 18px; border: 1px solid currentColor; border-radius: 14px; font-size: 13px; }
+.ab-hero { min-height: 600px; }
+.ab-try { padding: 72px 0 40px; scroll-margin-top: 96px; border-bottom: 1px solid var(--line); }
+.ab-try:focus, .landing-section:focus { outline: none; }
+.ab-work { display: grid; gap: 22px; scroll-margin-top: 110px; }
+
+/* stepper: the progress line at the top of the workspace */
+.ab-stepper { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); list-style: none; margin: 0; padding: 0; }
+.ab-stepper li { display: flex; align-items: center; gap: 10px; font-size: 13px; color: var(--subtle); padding-right: 12px; }
+.ab-stepper li::after { content: ""; flex: 1; height: 2px; border-radius: 2px; background: var(--line); }
+.ab-stepper li:last-child::after { display: none; }
+.ab-stepper i { flex: none; width: 28px; height: 28px; border-radius: 50%; display: grid; place-items: center; font-style: normal; font-size: 12px; border: 1px solid var(--line-strong); }
+.ab-stepper li.done { color: var(--muted); }
+.ab-stepper li.done i { background: color-mix(in srgb, var(--allow) 22%, transparent); border-color: color-mix(in srgb, var(--allow) 55%, transparent); color: var(--allow); }
+.ab-stepper li.done::after { background: linear-gradient(90deg, var(--accent), var(--accent-soft)); }
+.ab-stepper li.now { color: var(--text); }
+.ab-stepper li.now i { background: var(--grad); border-color: transparent; color: #fff; box-shadow: 0 0 0 6px color-mix(in srgb, var(--accent) 22%, transparent); }
+
+/* panels */
+.ab-panel { border: 1px solid var(--line); border-radius: 20px; padding: 24px; background: color-mix(in srgb, var(--surface) 90%, transparent); min-width: 0; }
+.ab-ghost { opacity: .45; }
+.ab-grid { display: grid; gap: 22px; grid-template-columns: minmax(0, .85fr) minmax(0, 1.15fr); align-items: start; }
+.ab-col { display: grid; gap: 22px; min-width: 0; }
+.ab-h { font-size: 19px; font-weight: 400; letter-spacing: -.01em; margin: 0 0 12px; display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+.ab-h-row { display: flex; justify-content: space-between; align-items: baseline; gap: 12px; flex-wrap: wrap; }
+.ab-label { display: block; font-size: 13px; color: var(--muted); margin: 18px 0 8px; }
+.ab-label span { color: var(--subtle); }
+.ab-micro { font-size: 12px; line-height: 1.7; color: var(--subtle); margin: 6px 0; }
+.ab-note { font-size: 13px; color: var(--escalate); margin: 10px 0 0; }
+.ab-warn { font-size: 13px; color: var(--block); margin: 0; }
+.ab-empty { border: 1px dashed var(--line-strong); border-radius: 14px; padding: 18px; font-size: 13px; color: var(--subtle); margin: 0; }
+.ab-actions { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; margin-top: 18px; }
+.ab-actions .input { flex: 1; min-width: 200px; }
+.ab-center { justify-content: center; }
+.ab-check { display: flex; gap: 10px; align-items: center; font-size: 13px; color: var(--muted); margin-top: 12px; }
+
+/* step 1: ask */
+.ab-seg { display: inline-flex; gap: 4px; padding: 4px; border: 1px solid var(--line); border-radius: 999px; background: var(--surface-2); flex-wrap: wrap; }
+.ab-seg button { border: 0; background: transparent; color: var(--muted); padding: 9px 16px; border-radius: 999px; font: inherit; font-size: 13px; cursor: pointer; min-height: 40px; }
+.ab-seg button.on { background: var(--surface); color: var(--text); box-shadow: 0 0 0 1px var(--line-strong); }
+.ab-ask { width: 100%; min-height: 96px; padding: 14px 16px; font-size: 16px; line-height: 1.6; resize: vertical; }
+.ab-scenarios { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 10px; }
+.ab-scenario { text-align: left; border: 1px solid var(--line); border-radius: 14px; padding: 14px 16px; background: transparent; color: var(--text); font: inherit; cursor: pointer; display: grid; gap: 4px; transition: border-color .2s, background .2s, transform .2s; }
+.ab-scenario b { font-weight: 500; font-size: 14px; }
+.ab-scenario span { font-size: 12px; color: var(--subtle); line-height: 1.5; }
+.ab-scenario:hover { border-color: var(--line-strong); transform: translateY(-1px); }
+.ab-scenario.on { border-color: var(--accent-soft); background: color-mix(in srgb, var(--accent) 12%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--accent) 16%, transparent); }
+.ab-sc-hijacked.on { border-color: var(--block); background: color-mix(in srgb, var(--block) 10%, transparent); box-shadow: 0 0 0 3px color-mix(in srgb, var(--block) 14%, transparent); }
+.ab-more { margin-top: 14px; font-size: 13px; }
+.ab-more summary { cursor: pointer; color: var(--accent-text); min-height: 32px; display: flex; align-items: center; gap: 8px; list-style: none; }
+.ab-more summary::-webkit-details-marker { display: none; }
+.ab-more summary::before { content: "+"; font-size: 16px; width: 14px; }
+.ab-more[open] summary::before { content: "−"; }
+.ab-more-body { display: grid; gap: 2px; max-width: 640px; }
+.ab-more-body .input { width: 100%; }
+textarea.input { padding: 10px 14px; line-height: 1.6; }
+
+/* the employee's words, each permission highlighted */
+.ab-words { margin: 0; font-size: 17px; line-height: 1.75; white-space: pre-wrap; }
+.ab-mark { color: inherit; padding: 1px 3px; border-radius: 4px; }
+.ab-mark-ok { background: color-mix(in srgb, var(--allow) 20%, transparent); box-shadow: inset 0 -2px 0 var(--allow); }
+.ab-mark-no { background: color-mix(in srgb, var(--block) 20%, transparent); box-shadow: inset 0 -2px 0 var(--block); }
+
+/* the primary action: gradient with a glow, and a pulse ring inviting the one click */
+.ab-glow { box-shadow: 0 10px 34px rgba(117, 57, 251, .38), 0 0 0 1px rgba(255, 255, 255, .06) inset; }
+.ab-pulse { position: relative; }
+.ab-pulse::after { content: ""; position: absolute; inset: -4px; border-radius: 999px; border: 2px solid color-mix(in srgb, var(--accent-soft) 70%, transparent); animation: ab-ring 1.8s ease-out infinite; pointer-events: none; }
+.ab-pulse:disabled::after { display: none; }
+@keyframes ab-ring { 0% { opacity: .9; transform: scale(1); } 100% { opacity: 0; transform: scale(1.18); } }
+
+/* focus: dim and blur the page behind the panel in front */
+.ab-dim { position: fixed; inset: 0; z-index: 40; background: color-mix(in srgb, var(--bg) 55%, transparent); backdrop-filter: blur(6px); animation: ab-fade .25s ease-out; }
+@keyframes ab-fade { from { opacity: 0; } }
+
+/* step 2: the review panel slides in from the right */
+.ab-drawer { position: fixed; z-index: 41; top: 0; right: 0; bottom: 0; width: min(520px, 100%); display: flex; flex-direction: column; background: var(--surface); border-left: 1px solid var(--line-strong); box-shadow: -30px 0 80px rgba(0, 0, 0, .35); animation: ab-slide .38s cubic-bezier(.2, .8, .2, 1); }
+@keyframes ab-slide { from { transform: translateX(100%); opacity: .4; } }
+.ab-drawer-head { display: flex; justify-content: space-between; align-items: center; gap: 12px; padding: 22px 24px; border-bottom: 1px solid var(--line); }
+.ab-drawer-head h2 { margin: 0; font-size: 20px; font-weight: 400; letter-spacing: -.01em; }
+.ab-drawer-head h2:focus { outline: none; }
+.ab-x { width: 40px; height: 40px; border-radius: 50%; border: 1px solid var(--line-strong); background: transparent; color: var(--muted); cursor: pointer; }
+.ab-drawer-body { flex: 1; overflow-y: auto; padding: 6px 24px 24px; }
+.ab-drawer-foot { display: flex; justify-content: flex-end; gap: 12px; padding: 18px 24px; border-top: 1px solid var(--line); background: var(--surface-2); flex-wrap: wrap; }
+
+/* the permission card, like a company card: gradient edge, limits, valid for one task */
+.ab-card { margin: 20px 0 14px; border-radius: 18px; padding: 18px 18px 14px; background: linear-gradient(var(--surface-2), var(--surface-2)) padding-box, var(--grad) border-box; border: 1.5px solid transparent; }
+.ab-card-top { display: flex; justify-content: space-between; align-items: center; gap: 8px; margin-bottom: 12px; flex-wrap: wrap; }
+.ab-card-brand { display: inline-flex; align-items: center; gap: 8px; font-size: 14px; color: var(--accent-text); }
+.ab-card-valid { font-size: 11px; color: var(--subtle); border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; }
+.ab-card-foot { display: flex; justify-content: space-between; gap: 10px; flex-wrap: wrap; margin-top: 14px; padding-top: 12px; border-top: 1px dashed var(--line-strong); font-size: 11px; color: var(--subtle); }
+.ab-gemini { display: inline-flex; align-items: center; gap: 6px; color: var(--accent-text); }
+.ab-lines { list-style: none; margin: 0; padding: 0; display: grid; gap: 10px; }
+.ab-lines li { display: grid; grid-template-columns: 24px minmax(0, 1fr); gap: 10px; align-items: start; font-size: 14px; line-height: 1.5; }
+.ab-lines li small { display: block; color: var(--subtle); font-size: 12px; margin-top: 2px; overflow-wrap: anywhere; }
+.ab-lines li.gone { opacity: .5; text-decoration: line-through; }
+.ab-lines input { margin-top: 4px; width: 18px; height: 18px; }
+.ab-icon { width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; margin-top: 1px; }
+.ab-icon.ok { color: var(--allow); background: color-mix(in srgb, var(--allow) 18%, transparent); }
+.ab-icon.no { color: var(--block); background: color-mix(in srgb, var(--block) 16%, transparent); }
+
+/* status chips: shape and word, never colour alone */
+.ab-chip { display: inline-flex; align-items: center; gap: 6px; font-size: 11px; padding: 3px 10px; border-radius: 999px; border: 1px solid; white-space: nowrap; }
+.ab-chip.ok { color: var(--allow); border-color: color-mix(in srgb, var(--allow) 45%, transparent); background: color-mix(in srgb, var(--allow) 10%, transparent); }
+.ab-chip.no { color: var(--block); border-color: color-mix(in srgb, var(--block) 50%, transparent); background: color-mix(in srgb, var(--block) 12%, transparent); }
+.ab-chip.ask { color: var(--escalate); border-color: color-mix(in srgb, var(--escalate) 50%, transparent); }
+.ab-chip.warn { color: var(--neutralise); border-color: color-mix(in srgb, var(--neutralise) 50%, transparent); }
+.ab-live { color: var(--accent-text); }
+.ab-live::before { content: ""; display: inline-block; width: 7px; height: 7px; border-radius: 50%; margin-right: 7px; background: var(--accent-soft); animation: ab-blink 1.2s ease-in-out infinite; }
+@keyframes ab-blink { 50% { opacity: .25; } }
+
+/* step 3: the agents as a flow, with live wires */
+.ab-flow { display: grid; grid-template-columns: minmax(0, 1fr) 32px auto 32px minmax(0, 1fr); align-items: center; margin: 16px 0 18px; }
+.ab-node { border: 1px solid var(--line-strong); border-radius: 14px; padding: 10px 12px; display: grid; gap: 2px; text-align: center; background: var(--surface-2); transition: border-color .3s, box-shadow .3s; }
+.ab-node b { font-weight: 500; font-size: 14px; }
+.ab-node span { font-size: 11px; color: var(--subtle); }
+.ab-node.live { border-color: var(--accent-soft); box-shadow: 0 0 0 4px color-mix(in srgb, var(--accent) 18%, transparent), 0 0 28px color-mix(in srgb, var(--accent) 28%, transparent); }
+.ab-node-seal { color: var(--accent-text); justify-items: center; padding: 8px 10px; }
+.ab-wire { height: 2px; background-image: linear-gradient(90deg, var(--line-strong) 50%, transparent 50%); background-size: 8px 2px; }
+.ab-wire.run { background-image: linear-gradient(90deg, var(--accent-soft) 50%, transparent 50%); animation: ab-dash .6s linear infinite; }
+@keyframes ab-dash { to { background-position: 8px 0; } }
+.ab-steps { list-style: none; margin: 0; padding: 0; display: grid; gap: 8px; }
+.ab-step { border: 1px solid var(--line); border-radius: 14px; padding: 11px 14px; background: var(--surface-2); animation: ab-up .35s cubic-bezier(.2, .8, .2, 1) both; }
+@keyframes ab-up { from { opacity: 0; transform: translateY(8px); } }
+.ab-step-row { display: grid; grid-template-columns: 64px minmax(0, 1fr) auto; gap: 10px; align-items: center; font-size: 13px; }
+.ab-who { font-size: 11px; color: var(--subtle); text-transform: capitalize; }
+.ab-what { overflow-wrap: anywhere; }
+.ab-shield { display: flex; gap: 6px; align-items: center; margin: 6px 0 0 74px; font-size: 12px; color: var(--neutralise); }
+.ab-blocked { border-color: color-mix(in srgb, var(--block) 45%, transparent); }
+.ab-blockbox { margin: 10px 0 2px 74px; padding: 10px 12px; border-radius: 10px; background: color-mix(in srgb, var(--block) 12%, transparent); border: 1px solid color-mix(in srgb, var(--block) 35%, transparent); display: grid; gap: 3px; font-size: 12px; line-height: 1.55; }
+.ab-blockbox b { color: var(--block); font-weight: 500; letter-spacing: .06em; text-transform: uppercase; font-size: 11px; }
+.ab-trace { color: var(--subtle); }
+.ab-shimmer { height: 3px; margin-top: 14px; border-radius: 3px; background: linear-gradient(90deg, transparent, var(--accent-soft), transparent); background-size: 200% 100%; animation: ab-sweep 1.4s linear infinite; }
+@keyframes ab-sweep { from { background-position: 200% 0; } to { background-position: -200% 0; } }
+
+/* approval: a centred modal for one exact action */
+.ab-modal-wrap { position: fixed; inset: 0; z-index: 45; display: grid; place-items: center; padding: 16px; }
+.ab-modal { position: relative; z-index: 46; width: min(560px, 100%); max-height: calc(100vh - 32px); overflow-y: auto; background: var(--surface); border: 1px solid var(--line-strong); border-radius: 20px; padding: 24px; box-shadow: 0 30px 90px rgba(0, 0, 0, .45); animation: ab-pop .3s cubic-bezier(.2, .8, .2, 1); }
+@keyframes ab-pop { from { opacity: 0; transform: translateY(10px) scale(.98); } }
+.ab-modal h2 { font-size: 20px; font-weight: 400; margin: 6px 0; overflow-wrap: anywhere; }
+.ab-modal h2:focus { outline: none; }
+.ab-modal-kicker { margin: 0; font-size: 11px; letter-spacing: .12em; text-transform: uppercase; color: var(--escalate); }
+.ab-fields { display: grid; grid-template-columns: 96px minmax(0, 1fr); gap: 8px 12px; margin: 16px 0; font-size: 13px; }
+.ab-fields dt { color: var(--subtle); }
+.ab-fields dd { margin: 0; overflow-wrap: anywhere; }
+.ab-body { white-space: pre-wrap; max-height: 160px; overflow-y: auto; padding: 10px; border-radius: 10px; background: var(--surface-2); border: 1px solid var(--line); }
+.ab-info { font-size: 12px; color: var(--escalate); padding: 10px 12px; border-radius: 10px; border: 1px solid color-mix(in srgb, var(--escalate) 35%, transparent); background: color-mix(in srgb, var(--escalate) 8%, transparent); }
+.ab-modal-foot { display: flex; justify-content: flex-end; gap: 12px; flex-wrap: wrap; margin-top: 18px; }
+
+/* step 4: receipt */
+.ab-banner { display: flex; gap: 14px; align-items: flex-start; padding: 14px 16px; border-radius: 14px; margin-bottom: 18px; color: var(--allow); border: 1px solid color-mix(in srgb, var(--allow) 40%, transparent); background: color-mix(in srgb, var(--allow) 10%, transparent); }
+.ab-banner > span { width: 26px; height: 26px; border-radius: 50%; display: grid; place-items: center; background: color-mix(in srgb, var(--allow) 22%, transparent); flex: none; }
+.ab-banner b { display: block; font-weight: 500; font-size: 14px; }
+.ab-banner div > span { font-size: 13px; color: var(--muted); }
+.ab-banner.bad { color: var(--block); border-color: color-mix(in srgb, var(--block) 40%, transparent); background: color-mix(in srgb, var(--block) 10%, transparent); }
+.ab-timeline { list-style: none; margin: 8px 0 22px; padding: 0; display: grid; grid-template-columns: repeat(5, minmax(0, 1fr)); }
+.ab-timeline li { position: relative; padding-top: 26px; font-size: 12px; display: grid; gap: 2px; padding-right: 8px; }
+.ab-timeline li::before { content: ""; position: absolute; top: 7px; left: 14px; right: 0; height: 2px; background: var(--line-strong); }
+.ab-timeline li:last-child::before { display: none; }
+.ab-timeline i { position: absolute; top: 0; left: 0; width: 16px; height: 16px; border-radius: 50%; background: var(--allow); box-shadow: 0 0 0 4px color-mix(in srgb, var(--allow) 20%, transparent); }
+.ab-timeline li.no i { background: var(--block); box-shadow: 0 0 0 4px color-mix(in srgb, var(--block) 22%, transparent); }
+.ab-timeline b { font-weight: 500; font-size: 13px; }
+.ab-timeline li.no b { color: var(--block); }
+.ab-timeline span { color: var(--subtle); }
+.ab-sentences { list-style: none; margin: 0 0 12px; padding: 0; display: grid; gap: 8px; font-size: 14px; line-height: 1.65; }
+.ab-cite { display: inline-block; font: 10px/1.6 var(--font-mono); color: var(--accent-text); border: 1px solid var(--line); border-radius: 6px; padding: 0 5px; margin-left: 3px; }
+.ab-evidence { list-style: none; padding: 0; margin: 10px 0 0; display: grid; gap: 4px; }
+.ab-evidence span { color: var(--subtle); }
+.ab-row-us td { color: var(--accent-text); }
+.ab-rise { animation: ab-up .4s cubic-bezier(.2, .8, .2, 1) both; }
+.ab-keyform { max-width: 640px; }
+
+@media (max-width: 960px) {
+  .ab-grid { grid-template-columns: 1fr; }
+  .ab-scenarios { grid-template-columns: 1fr; }
+  .ab-grid > .ab-col:last-child { order: -1; }   /* on a narrow screen, the live work comes first */
+}
+@media (max-width: 640px) {
+  .ab-panel { padding: 18px; border-radius: 16px; }
+  .ab-stepper span { display: none; }
+  .ab-stepper li.now span { display: inline; }
+  .ab-timeline { grid-template-columns: 1fr; gap: 12px; }
+  .ab-timeline li { padding: 0 0 0 28px; }
+  .ab-timeline li::before { display: none; }
+  .ab-step-row { grid-template-columns: minmax(0, 1fr) auto; }
+  .ab-who { grid-column: 1 / -1; }
+  .ab-shield, .ab-blockbox { margin-left: 0; }
+  .ab-flow { grid-template-columns: minmax(0, 1fr) 14px auto 14px minmax(0, 1fr); }
+  .ab-node span { display: none; }
+  .ab-drawer { top: auto; height: 92vh; border-left: 0; border-top: 1px solid var(--line-strong); border-radius: 20px 20px 0 0; animation-name: ab-sheet; }
+  .ab-status { display: none; }
+}
+@keyframes ab-sheet { from { transform: translateY(100%); } }

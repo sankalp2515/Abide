@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "intentseal-eval"
 version = "0.1.0"
-description = "IntentSeal Delegate evaluation: attacks and normal tasks in sandboxed businesses, judged from execution logs"
+description = "Abide evaluation: attacks and normal tasks in sandboxed businesses, judged from execution logs"
 requires-python = ">=3.11"
 dependencies = ["intentseal-core", "intentseal-gateway"]
 

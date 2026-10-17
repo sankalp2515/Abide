@@ -1,4 +1,4 @@
-# Content firewall policy for IntentSeal Delegate (step 5). Delegate's own gate (policies/delegate/workspace.yaml)
+# Content firewall policy for Abide (step 5). Delegate's own gate (policies/delegate/workspace.yaml)
 # decides tool calls; this policy only governs how content agents read is inspected and cleaned.
 agent: delegate-workspace
 version: "1"

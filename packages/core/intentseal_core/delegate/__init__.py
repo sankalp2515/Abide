@@ -1,4 +1,4 @@
-"""IntentSeal Delegate: an employee's request becomes the permission for every agent that works on it.
+"""Abide: an employee's request becomes the permission for every agent that works on it.
 
 Architecture steps (docs/DESIGN_NOTES.md):
   ② compiler.py  - a model (or the rule drafter) proposes clauses, each quoting the employee's words

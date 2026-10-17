@@ -2,13 +2,21 @@ import { useCallback, useEffect, useRef, useState, type ReactNode } from "react"
 import type { Decision } from "../api";
 
 /* ---- brand ---------------------------------------------------------------------------------- */
+/** Abide's mark: a speech bubble (your words) holding a check (the one approval). */
 export function SealMark({ size = 26 }: { size?: number }) {
   return (
-    <svg width={size} height={size * 1.07} viewBox="0 0 30 32" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.7}>
-      <path d="m15 2 11 4v10c0 6-5 11-11 14C9 27 4 22 4 16V6z" />
-      <path d="m10 15 4 4 7-8" />
+    <svg width={size} height={size} viewBox="0 0 30 30" aria-hidden fill="none" stroke="currentColor" strokeWidth={1.8}
+      strokeLinecap="round" strokeLinejoin="round">
+      <path d="M4 7a3.5 3.5 0 0 1 3.5-3.5h15A3.5 3.5 0 0 1 26 7v11a3.5 3.5 0 0 1-3.5 3.5H14l-6.5 5v-5h0A3.5 3.5 0 0 1 4 18z" />
+      <path d="m10.5 12.5 3.2 3.2 6-6.2" />
     </svg>
   );
+}
+
+/** The Gemini spark, for what Gemini drafted or wrote. */
+export function Spark({ size = 14 }: { size?: number }) {
+  return <svg width={size} height={size} viewBox="0 0 24 24" aria-hidden><path fill="currentColor"
+    d="M12 2c.6 4.9 4.1 8.4 9 9-4.9.6-8.4 4.1-9 9-.6-4.9-4.1-8.4-9-9 4.9-.6 8.4-4.1 9-9z" /></svg>;
 }
 
 export function Arrow() {

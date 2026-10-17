@@ -1,8 +1,8 @@
-// Typed client for the IntentSeal Gateway API. Uses the public read-only key (never an admin key in the browser).
+// Typed client for the Abide Gateway API. Uses the public read-only key (never an admin key in the browser).
 
 export const API_BASE: string = (import.meta.env.VITE_API_BASE as string | undefined) ?? "http://localhost:8000";
 const API_KEY: string = (import.meta.env.VITE_API_KEY as string | undefined) ?? "";
-export const PRODUCT_NAME: string = (import.meta.env.VITE_PRODUCT_NAME as string | undefined) ?? "IntentSeal";
+export const PRODUCT_NAME: string = (import.meta.env.VITE_PRODUCT_NAME as string | undefined) ?? "Abide";
 export const TAGLINE = "Hand off the task. Approve it once.";
 export const AGENT = "delegate-workspace";
 
@@ -285,6 +285,8 @@ export const api = {
   metrics: (hours = 24) => call<Metrics>(`/v1/metrics?hours=${hours}`),
   costs: (days = 7) => call<Costs>(`/v1/costs?days=${days}`),
   whoami: (key: string) => call<{ name: string; scope: string }>("/v1/whoami", undefined, key),
+  /** A private 7-day key for this visitor, when the deployment allows it (no sign-up). */
+  trialKey: () => call<{ key: string; name: string; expires: number }>("/v1/trial-keys", { method: "POST" }, ""),
   agents: () => call<AgentSummary[]>("/v1/agents"),
   providers: () => call<ProviderInfo[]>("/v1/providers"),
   templates: () => call<PolicyTemplate[]>("/v1/setup/templates"),
@@ -297,7 +299,7 @@ export const api = {
     call<Investigation>(`/v1/sessions/${encodeURIComponent(sessionId)}/investigate`, { method: "POST" }),
 };
 
-/* ---- IntentSeal Delegate -------------------------------------------------------------------- */
+/* ---- Delegation (Abide) -------------------------------------------------------------------- */
 export interface DClause {
   id: string; effect: "permit" | "prohibit"; action: string; values: Record<string, string[]>; quote: string;
   origin: string; note: string; plain: string; verified?: boolean; superseded_by?: string | null;

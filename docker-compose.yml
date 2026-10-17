@@ -1,4 +1,4 @@
-# IntentSeal Delegate on your machine: the gateway (API + Delegate + Console + content filter) and PostgreSQL.
+# Abide on your machine: the gateway (API + Delegate + Console + content filter) and PostgreSQL.
 #
 #   cp .env.example .env            # optional: add GEMINI_API_KEY to let Gemini draft cards and write receipts
 #   docker compose up --build -d    # Console: http://localhost:8000  ·  API docs: http://localhost:8000/docs
@@ -8,7 +8,7 @@
 # Production shape: the gateway is stateless apart from the live demo's sandboxes; all evidence (contracts, receipts,
 # approvals, decisions) is in PostgreSQL. Ports are bound to this machine only. For any shared host, set your own long
 # random keys and secrets in .env (see .env.example) — the defaults below are for local use only.
-name: intentseal-delegate
+name: abide
 
 x-keys:
   public: &public-key ${INTENTSEAL_PUBLIC_KEY:-local-public-key}
@@ -36,7 +36,7 @@ services:
       context: .
       args:
         VITE_API_KEY: *public-key         # the Console's read-only key; must equal INTENTSEAL_PUBLIC_KEY
-    image: intentseal-delegate:local
+    image: abide:local
     depends_on:
       postgres: { condition: service_healthy }
     env_file: [{ path: .env, required: false }]
@@ -47,6 +47,7 @@ services:
       INTENTSEAL_PUBLIC_KEY: *public-key
       INTENTSEAL_DELEGATE_SECRET: ${INTENTSEAL_DELEGATE_SECRET:-local-only-seal-key-change-me}
       INTENTSEAL_INVESTIGATOR_AUTO: "0"
+      INTENTSEAL_TRIAL_KEYS: ${INTENTSEAL_TRIAL_KEYS:-1}       # visitors get a private 7-day key: no key to type
       INTENTSEAL_PUBLIC_RATE_LIMIT_PER_MIN: ${INTENTSEAL_PUBLIC_RATE_LIMIT_PER_MIN:-300}
     ports: ["127.0.0.1:8000:8000"]
     volumes: ["gateway-data:/data"]

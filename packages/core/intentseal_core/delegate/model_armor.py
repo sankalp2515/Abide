@@ -1,6 +1,6 @@
 """Google Cloud Model Armor as a second screen in the content filter (step ④).
 
-IntentSeal's engine inspects everything an agent reads first (rules, local classifier, hidden-text removal). Model
+Abide's engine inspects everything an agent reads first (rules, local classifier, hidden-text removal). Model
 Armor then screens what the agent would actually receive. A prompt-injection / jailbreak or malicious-URL match holds
 that content: the agent gets a notice instead, and the text stays tracked as untrusted so the gate can trace anything
 it causes. Model Armor adds to the engine's decision and never relaxes it; if it cannot be reached, the engine's

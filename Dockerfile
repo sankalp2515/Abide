@@ -1,4 +1,4 @@
-# IntentSeal Delegate: one image with the Gateway API, the Delegate service, the Console (served at /), the content
+# Abide: one image with the Gateway API, the Delegate service, the Console (served at /), the content
 # filter (engine + local classifier, baked in) and the Gemini agents (Google ADK). Runs as an unprivileged user.
 #
 #   docker compose up --build -d        # gateway + PostgreSQL (docker-compose.yml), Console on http://localhost:8000
@@ -12,7 +12,7 @@ COPY apps/console/package.json apps/console/package-lock.json ./
 RUN npm ci --no-audit --no-fund
 COPY apps/console ./
 ARG VITE_API_KEY=""
-ENV VITE_API_BASE="" VITE_API_KEY=$VITE_API_KEY VITE_PRODUCT_NAME=IntentSeal
+ENV VITE_API_BASE="" VITE_API_KEY=$VITE_API_KEY VITE_PRODUCT_NAME=Abide
 RUN npm run build
 
 
@@ -26,7 +26,7 @@ COPY packages ./packages
 COPY services ./services
 # Runtime dependencies only, at the exact versions of requirements.lock (a constraints file: nothing extra installed).
 RUN pip install -c requirements.lock "./packages/core[engine,classifiers,ocr,postgres]" ./packages/sdk ./services/gateway openai
-# IntentSeal Delegate's Gemini agents run on Google ADK (it brings google-genai and a newer FastAPI; tested together).
+# Abide's Gemini agents run on Google ADK (it brings google-genai and a newer FastAPI; tested together).
 RUN pip install "google-adk==2.12.0"
 # Bake the Tier 1 classifier into the image so a cold start never runs without it.
 ENV HF_HOME=/opt/models/hf

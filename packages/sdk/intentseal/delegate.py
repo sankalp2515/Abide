@@ -1,10 +1,10 @@
-"""IntentSeal Delegate client: put your own agents under the employee's words, against a hosted IntentSeal gateway.
+"""Abide client: put your own agents under the employee's words, against a hosted Abide gateway.
 
 Self-contained (only `httpx`), so it also works as a single downloaded file:
 
-    curl -O https://<gateway>/v1/sdk/intentseal_delegate.py
+    curl -O https://<gateway>/v1/sdk/abide.py
 
-    from intentseal_delegate import DelegateClient, RemoteAdkGuard
+    from abide import DelegateClient, RemoteAdkGuard
 
     client = DelegateClient("https://<gateway>", key)              # a project key (or POST /v1/trial-keys)
     await client.register_workspace("my-company", policy)          # your tools, contacts, files, rules (once)
@@ -137,7 +137,7 @@ AskHandler = Callable[[dict[str, Any]], Awaitable[bool]]
 
 
 class RemoteAdkGuard:
-    """Google ADK callbacks that check every tool call with a remote IntentSeal gateway.
+    """Google ADK callbacks that check every tool call with a remote Abide gateway.
 
     before_tool: allowed -> the tool runs; stopped -> it never runs and the agent gets the reason; needs the employee
     -> `on_ask(check)` decides (await a person, a chat, a ticket), or without it the call waits and the agent is told.

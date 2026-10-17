@@ -1,4 +1,4 @@
-# IntentSeal Delegate: one-time setup and deploy to Cloud Run. Run from the repository root in PowerShell.
+# Abide: one-time setup and deploy to Cloud Run. Run from the repository root in PowerShell.
 #
 #   .\scripts\deploy_cloud_run.ps1 -Project my-intentseal-project [-Region asia-southeast1]
 #
@@ -24,7 +24,7 @@ gcloud services enable run.googleapis.com cloudbuild.googleapis.com artifactregi
 
 if (-not (gcloud artifacts repositories list --location=$Region --filter="name~intentseal" --format="value(name)" $P)) {
   gcloud artifacts repositories create intentseal --repository-format=docker --location=$Region `
-    --description="IntentSeal Delegate images" $P
+    --description="Abide images" $P
 }
 
 # Model Armor: prompt injection / jailbreak and malicious links hold content; sensitive data is recorded.
@@ -42,7 +42,7 @@ catch {
 # A runtime identity with only what the service needs.
 $sa = "intentseal-run@$Project.iam.gserviceaccount.com"
 if (-not (gcloud iam service-accounts list --filter="email=$sa" --format="value(email)" $P)) {
-  gcloud iam service-accounts create intentseal-run --display-name="IntentSeal Delegate runtime" $P
+  gcloud iam service-accounts create intentseal-run --display-name="Abide runtime" $P
 }
 foreach ($role in "roles/aiplatform.user", "roles/modelarmor.user") {
   gcloud projects add-iam-policy-binding $Project --member="serviceAccount:$sa" --role=$role --condition=None | Out-Null
@@ -66,5 +66,5 @@ Ensure-Secret "intentseal-delegate-secret" {       # the handoff-seal key: rando
 
 gcloud builds submit --config deploy/cloudbuild.yaml $P `
   --substitutions="_REGION=$Region,_PUBLIC_KEY=$PublicKey,_SA=$sa,_ARMOR_LOCATION=$ArmorLocation"
-gcloud run services describe intentseal-delegate --region=$Region --format="value(status.url)" $P
+gcloud run services describe abide --region=$Region --format="value(status.url)" $P
 Write-Host "Console read-only key (also baked into the Console build): $PublicKey"

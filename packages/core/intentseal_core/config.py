@@ -17,7 +17,7 @@ DEFAULTS = Path(__file__).resolve().parent / "defaults"   # bundled config, poli
 
 
 def repo_root() -> Path:
-    """Where IntentSeal keeps its configuration and data: INTENTSEAL_HOME, else the source checkout this package runs
+    """Where Abide keeps its configuration and data: INTENTSEAL_HOME, else the source checkout this package runs
     from (development), else a per-user folder (~/.intentseal) for an installed package."""
     env = os.environ.get("INTENTSEAL_HOME")
     if env:
@@ -38,7 +38,9 @@ def config_path(*parts: str) -> Path:
 def load_env() -> None:
     # The project's own .env (an installed package) first, then the home or repo .env. A value is taken only where the
     # environment has none: the empty placeholders `intentseal init` writes never hide a key set elsewhere.
-    for path in (Path.cwd() / ".env", repo_root() / ".env"):
+    # INTENTSEAL_NO_DOTENV=1 skips the files (tests: nothing on the machine may change what they exercise).
+    paths = () if os.environ.get("INTENTSEAL_NO_DOTENV") == "1" else (Path.cwd() / ".env", repo_root() / ".env")
+    for path in paths:
         for key, value in (dotenv_values(path) if path.is_file() else {}).items():
             if value and not os.environ.get(key):
                 os.environ[key] = value

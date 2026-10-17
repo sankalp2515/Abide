@@ -1,8 +1,8 @@
-# IntentSeal Delegate
+# Abide
 
 **Hand off the task. Approve it once.**
 
-IntentSeal Delegate makes it safe to hand everyday office work to a team of AI agents. The employee's own request
+Abide makes it safe to hand everyday office work to a team of AI agents. The employee's own request
 becomes the permission: Gemini turns it into a short card of what the agents may and may not do, every agent tool
 call is checked against that card, and the employee gets a receipt of what actually happened.
 
@@ -25,7 +25,7 @@ outside the company). Neither is tied to what the employee actually asked for.
 | **Confirm once** | The employee confirms the card (bound to its hash). The agents then work without approval pop-ups. Every tool call is checked: who receives it, which file or record, how much, which fields. A call outside the card is stopped; if it traces back to a document the agents read, it is stopped without asking anyone. A company rule such as "confirm before an email leaves" asks one question for one exact action. |
 | **Prove** | Each step, stop and approval becomes a numbered, hash-chained receipt. Gemini writes the summary, and every sentence must cite receipts; a sentence the receipts do not support is dropped. |
 
-Layers work together: the IntentSeal content filter and **Google Model Armor** remove instructions hidden in what the
+Layers work together: the Abide content filter and **Google Model Armor** remove instructions hidden in what the
 agents read, and the card stops actions that were never asked for, even when both filters miss. The agents in the demo
 are **real Gemini agents (Google ADK on Vertex AI)**: they choose their own steps; the card decides which of those run.
 
@@ -50,7 +50,7 @@ desk (Acme Home). Outcomes come from the sandbox's execution log, not from what 
 |---|---|---|---|
 | No protection | 28 of 28 | 26 of 26 | 0.0 |
 | Ask before every step | 28 of 28 | 22 of 26 | 1.62 |
-| **IntentSeal Delegate** | **0 of 28** | **26 of 26** | **0.38** |
+| **Abide** | **0 of 28** | **26 of 26** | **0.38** |
 | Delegate with the content filter off | 0 of 28 | 26 of 26 | 0.38 |
 
 The agents in this evaluation are scripted to obey every instruction they read (a worst case), the scenarios are our
@@ -87,11 +87,11 @@ GOOGLE_ADC=<path to application_default_credentials.json> docker compose -f dock
 
 No sign-up and nobody to contact: get a private trial key, register your business (tools, people, records, rules),
 and put your own Google ADK agent under the employee's words with two callbacks, against the hosted service.
-**Colab quickstart:** [`examples/colab/intentseal_delegate_quickstart.ipynb`](examples/colab/intentseal_delegate_quickstart.ipynb)
+**Colab quickstart:** [`examples/colab/abide_quickstart.ipynb`](examples/colab/abide_quickstart.ipynb)
 (about two minutes). Guide: [docs/INTEGRATE.md](docs/INTEGRATE.md).
 
 ```python
-from intentseal_delegate import DelegateClient, RemoteAdkGuard      # one file: GET /v1/sdk/intentseal_delegate.py
+from abide import DelegateClient, RemoteAdkGuard      # one file: GET /v1/sdk/abide.py
 
 client = await DelegateClient.with_trial_key("https://<gateway>")
 await client.register_workspace("northwind-travel", policy)
@@ -115,7 +115,7 @@ example "refund" is a purchase), amount currency and company rules. The office a
 | Path | Contents |
 |---|---|
 | `packages/core/intentseal_core/delegate/` | Contract model, compiler and validator, gate, approvals, handoff seal, receipts, service, ADK connector |
-| `packages/core/intentseal_core/` | IntentSeal content filter engine (rules, classifier, judge router), store (SQLite or PostgreSQL) |
+| `packages/core/intentseal_core/` | Abide content filter engine (rules, classifier, judge router), store (SQLite or PostgreSQL) |
 | `services/gateway/` | FastAPI gateway: Delegate API, live sandbox demo, Gemini agent team, Console hosting |
 | `apps/console/` | React Console: landing page, Delegate page, decisions, replay, review |
 | `policies/delegate/` | Business policies for the two sandboxes |

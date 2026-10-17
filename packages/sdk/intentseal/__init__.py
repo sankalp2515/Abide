@@ -1,4 +1,4 @@
-"""IntentSeal Python SDK."""
+"""Abide Python SDK."""
 
 from intentseal_core.types import ActionResult, Decision, InspectResult
 

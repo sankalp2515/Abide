@@ -1,4 +1,4 @@
-# IntentSeal Delegate demo workspace 2: the customer-support desk of Acme Home, an online home-goods store.
+# Abide demo workspace 2: the customer-support desk of Acme Home, an online home-goods store.
 # Same product, different business: tools, records and words come from this file only.
 workspace: acme-desk
 agent_id: delegate-workspace

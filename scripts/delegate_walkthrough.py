@@ -1,4 +1,4 @@
-"""Replays the IntentSeal Delegate user journey in a real browser and saves a screenshot at every step, for
+"""Replays the Abide user journey in a real browser and saves a screenshot at every step, for
 docs/WALKTHROUGH.md. Needs the running stack (`docker compose up -d`, Console on http://127.0.0.1:8000).
 
     python scripts/delegate_walkthrough.py            # Microsoft Edge, headless

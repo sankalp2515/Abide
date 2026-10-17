@@ -76,7 +76,7 @@ async def providers_check(call: bool, show_models: bool) -> int:
     return 1 if bad else 0
 
 
-ENV_TEMPLATE = """# IntentSeal settings (read from this folder and from your project's .env). Keys are never printed or logged.
+ENV_TEMPLATE = """# Abide settings (read from this folder and from your project's .env). Keys are never printed or logged.
 # The AI judge (Tier 2) uses free-tier providers by default; set at least one key:
 GROQ_API_KEY=
 GEMINI_API_KEY=

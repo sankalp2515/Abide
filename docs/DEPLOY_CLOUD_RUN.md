@@ -1,4 +1,4 @@
-# Deploying IntentSeal Delegate to Cloud Run
+# Deploying Abide to Cloud Run
 
 One Cloud Run service runs the gateway API, the Console (served at `/`) and the live demo. Cloud Build builds the image,
 so nothing heavy runs on your machine. Gemini (Vertex AI) and Model Armor are called with the service's own identity:
@@ -15,7 +15,7 @@ there is no model API key to store or rotate.
 
 ## Before you start
 
-1. A Google Cloud project for IntentSeal with billing enabled, and a budget with alerts on it.
+1. A Google Cloud project for Abide with billing enabled, and a budget with alerts on it.
 2. `gcloud auth login` with an account that owns that project.
 
 ## Deploy

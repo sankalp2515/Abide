@@ -1,6 +1,6 @@
 # Security policy
 
-IntentSeal Delegate is a security product, so reports are welcome and taken seriously.
+Abide is a security product, so reports are welcome and taken seriously.
 
 ## Reporting a vulnerability
 

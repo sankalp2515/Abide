@@ -1,4 +1,4 @@
-# IntentSeal Delegate: local evaluation
+# Abide: local evaluation
 
 Run: `python -m intentseal_eval.delegate` (report: `eval/reports/delegate-local.json`). Local: rule drafter, template
 writer, local content filter (rules + local classifier, no judge model), scripted obedient agents.

@@ -53,7 +53,7 @@ def record(row: dict[str, Any], org: str | None = None) -> dict[str, Any]:
                   "duration": int((row.get("latency_ms") or 0) * 1_000_000)},
         "rule": {"name": row.get("policy_rule"), "category": labels},
         "message": row.get("reason"),
-        "observer": {"vendor": "IntentSeal", "product": "IntentSeal Gateway", "version": __version__},
+        "observer": {"vendor": "Abide", "product": "Abide Gateway", "version": __version__},
         "organization": {"name": org} if org else None,
         "intentseal": {
             "agent_id": row.get("agent_id"), "session_id": row.get("session_id"), "kind": row.get("kind"),
@@ -86,7 +86,7 @@ def cef(rec: dict[str, Any]) -> str:
         "cn1Label": "riskPercent", "cn1": int(round((i["risk"] or 0) * 100)), "cn2Label": "tier", "cn2": i["tier"],
         "msg": rec["message"],
     }
-    head = "|".join(_cef_header(v) for v in ("CEF:0", "IntentSeal", "Gateway", __version__, rec["rule"]["name"] or "decision",
+    head = "|".join(_cef_header(v) for v in ("CEF:0", "Abide", "Gateway", __version__, rec["rule"]["name"] or "decision",
                                              f"{i['decision']} {i['kind'] or ''}".strip(), ev["severity"]))
     return head + "|" + " ".join(f"{k}={_cef_ext(v)}" for k, v in ext.items() if v not in (None, ""))
 

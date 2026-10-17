@@ -1,4 +1,4 @@
-"""IntentSeal Delegate M1–M2: argument-level contracts, the compiler and the grounding validator."""
+"""Abide M1–M2: argument-level contracts, the compiler and the grounding validator."""
 
 import asyncio
 

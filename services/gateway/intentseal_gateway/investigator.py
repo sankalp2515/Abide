@@ -1,6 +1,6 @@
 """Investigator: an agent that triages what the firewall flagged (D-061).
 
-When IntentSeal blocks or escalates something, a security analyst has to answer the same questions every time: where
+When Abide blocks or escalates something, a security analyst has to answer the same questions every time: where
 did the attack come in, what was it trying to make the agent do, did anything run, is it new or part of a campaign,
 and what should change. The Investigator answers them the way an analyst would, as a tool-using agent:
 
@@ -50,11 +50,11 @@ SCHEMA = [
         status TEXT DEFAULT 'pending', created_at REAL, resolved_by TEXT, resolved_at REAL)""",
 ]
 
-SYSTEM = f"""You are the IntentSeal Investigator, a security analyst agent. IntentSeal (a prompt-injection firewall)
+SYSTEM = f"""You are the Abide Investigator, a security analyst agent. Abide (a prompt-injection firewall)
 flagged something in one AI agent session. Investigate it with your tools, then call submit_report exactly once.
 
 Playbook (plan your steps along it, skip what does not apply):
-1. timeline: what came in, in what order, what IntentSeal decided, which actions the agent attempted.
+1. timeline: what came in, in what order, what Abide decided, which actions the agent attempted.
 2. evidence: for each flagged event, the findings (signals, attack types, scores, the quoted spans).
 3. decode: reveal hidden or encoded text in a flagged event (base64, hex, rot13, look-alike letters, tag characters).
 4. history: has this agent seen the same attack before (memory) or the same rule firing repeatedly (a campaign)?
@@ -100,7 +100,7 @@ TOOLS: list[dict[str, Any]] = [
                                           "attack_types": {"type": "array", "items": {"type": "string"}},
                                           "entry_point": {"type": "string", "description": "Which input carried it (event and source)."},
                                           "objective": {"type": "string", "description": "What the attacker tried to make the agent do."},
-                                          "outcome": {"type": "string", "description": "What IntentSeal did and whether anything harmful ran."},
+                                          "outcome": {"type": "string", "description": "What Abide did and whether anything harmful ran."},
                                           "approval_recommendation": {"type": "string", "description": "For a pending approval: approve or deny, and why. Empty if none."},
                                           "next_steps": {"type": "array", "items": {"type": "string"}},
                                           "confidence": {"type": "number"}},

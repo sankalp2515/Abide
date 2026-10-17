@@ -1,9 +1,9 @@
 # Bring your own agent and your own business
 
-IntentSeal Delegate governs **any** agent and **any** business you describe, not just the two demo sandboxes.
+Abide governs **any** agent and **any** business you describe, not just the two demo sandboxes.
 Nothing to sign up for and nobody to contact: a deployment with self-serve keys gives you a private key in one call.
 
-**Fastest path:** open [`examples/colab/intentseal_delegate_quickstart.ipynb`](../examples/colab/intentseal_delegate_quickstart.ipynb)
+**Fastest path:** open [`examples/colab/abide_quickstart.ipynb`](../examples/colab/abide_quickstart.ipynb)
 in Google Colab, set `GATEWAY` to the service URL, and run all cells (about two minutes). It registers a travel
 agency, turns an employee's words into a permission card, runs a real Gemini agent (Google ADK) under that card, and
 prints what ran, what was stopped and the receipt.
@@ -22,7 +22,7 @@ three per address per hour. An operator issues permanent keys through `INTENTSEA
 One file, only `httpx` needed, served by the gateway itself:
 
 ```bash
-curl -O https://<gateway>/v1/sdk/intentseal_delegate.py
+curl -O https://<gateway>/v1/sdk/abide.py
 ```
 
 (or `from intentseal.delegate import DelegateClient, RemoteAdkGuard` with the `intentseal` package installed).
@@ -30,7 +30,7 @@ curl -O https://<gateway>/v1/sdk/intentseal_delegate.py
 ## 3. Describe your business, once
 
 ```python
-from intentseal_delegate import DelegateClient, RemoteAdkGuard
+from abide import DelegateClient, RemoteAdkGuard
 
 client = DelegateClient("https://<gateway>", key)          # or: await DelegateClient.with_trial_key(url)
 await client.register_workspace("northwind-travel", {

@@ -25,3 +25,4 @@ def _no_live_google(monkeypatch):
     for name in ("GOOGLE_CLOUD_PROJECT", "GOOGLE_GENAI_USE_VERTEXAI", "GEMINI_API_KEY", "GOOGLE_API_KEY",
                  "INTENTSEAL_MODEL_ARMOR_TEMPLATE", "INTENTSEAL_TRIAL_KEYS"):
         monkeypatch.delenv(name, raising=False)
+    monkeypatch.setenv("INTENTSEAL_NO_DOTENV", "1")      # a developer's .env must not switch on live Google calls

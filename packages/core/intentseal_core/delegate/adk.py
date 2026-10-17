@@ -1,4 +1,4 @@
-"""Connect Google ADK agents to IntentSeal Delegate (step ⑦ at the tool boundary, plus ⑤ on what tools return).
+"""Connect Google ADK agents to Abide (step ⑦ at the tool boundary, plus ⑤ on what tools return).
 
     guard = AdkGuard(service, workflow_id, agent_name="drafter")
     agent = LlmAgent(..., tools=[...], before_tool_callback=guard.before_tool, after_tool_callback=guard.after_tool)

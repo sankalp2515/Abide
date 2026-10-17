@@ -38,7 +38,7 @@ function harness() {
         if (imports[name]) return imports[name];
         if (name === 'react') return react;
         if (name === 'react/jsx-runtime') return { jsx, jsxs: jsx, Fragment: 'fragment' };
-        if (name.endsWith('/api')) return { api, ApiError, PRODUCT_NAME: 'IntentSeal', AGENT: 'delegate-workspace' };
+        if (name.endsWith('/api')) return { api, ApiError, PRODUCT_NAME: 'Abide', AGENT: 'delegate-workspace' };
         return {};
       },
       Date: { now: () => now },

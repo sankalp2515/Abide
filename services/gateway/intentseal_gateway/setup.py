@@ -128,7 +128,7 @@ async def connect(agent: str, request: Request, p: Principal = require("public")
         {"id": "openai-env", "title": "Any OpenAI-compatible agent, no code change",
          "when": "The agent uses an OpenAI SDK or an OpenAI-compatible client (LangChain, LlamaIndex, CrewAI, AutoGen, ...)",
          "language": "bash",
-         "code": f"export OPENAI_BASE_URL={gw}/proxy/{agent}/v1\nexport OPENAI_API_KEY=<IntentSeal project key>"
+         "code": f"export OPENAI_BASE_URL={gw}/proxy/{agent}/v1\nexport OPENAI_API_KEY=<Abide project key>"
                  + ("\n# and send your own provider key in the X-Upstream-Key header (see the Python example)" if byok else "")},
         {"id": "openai-python", "title": "OpenAI SDK (Python)", "when": "Explicit client configuration", "language": "python",
          "code": (f'import os\nfrom openai import OpenAI\n\nclient = OpenAI(base_url="{gw}/proxy/{agent}/v1",\n'
@@ -149,7 +149,7 @@ async def connect(agent: str, request: Request, p: Principal = require("public")
                   f'                      http_options={{"base_url": "{gw}/proxy/{agent}/gemini"'
                   + (', "headers": {"X-Upstream-Key": os.environ["GEMINI_API_KEY"]}' if byok else "") + '})\n'
                   'reply = client.models.generate_content(model="gemini-3.1-flash-lite", contents=prompt)')},
-        {"id": "sdk-python", "title": "IntentSeal SDK (deepest protection, any model)",
+        {"id": "sdk-python", "title": "Abide SDK (deepest protection, any model)",
          "when": "Python agents whose tools you can wrap; works whatever LLM provider the agent uses", "language": "python",
          "code": (f'from intentseal import Guard\n\nguard = Guard("{agent}", remote="{gw}", api_key=os.environ["INTENTSEAL_KEY"])\n'
                   'with guard.session(user_id="u1", task=user_request, trusted={"customer_id": "C-1042"}):\n'
@@ -158,7 +158,7 @@ async def connect(agent: str, request: Request, p: Principal = require("public")
                   'def send_message(to: str, subject: str, body: str): ...')},
         {"id": "rag", "title": "RAG app (retrieved documents)",
          "when": ("Your app retrieves documents (vector store, search, knowledge base) and puts them in the prompt. "
-                  "Retrieved text is third-party content: IntentSeal must see it as such, not as your prompt or the user's words"),
+                  "Retrieved text is third-party content: Abide must see it as such, not as your prompt or the user's words"),
          "language": "python",
          "code": (f'# A. Proxy, no SDK: keep your pipeline, wrap each retrieved chunk in <document> tags (inside <context>),\n'
                   f'#    in the system or the user message. Tagged text is inspected as untrusted and cleaned in place.\n'
@@ -206,7 +206,7 @@ async def self_test(agent: str, request: Request, p: Principal = require("projec
     run = uuid.uuid4().hex[:8]
 
     def fresh(i: int) -> str:   # one session per probe, so one probe's risk never decides the next
-        return engine.start_session(agent, task="IntentSeal connection self-test", session_id=f"selftest-{run}-{i}").session_id
+        return engine.start_session(agent, task="Abide connection self-test", session_id=f"selftest-{run}-{i}").session_id
 
     checks = []
     t0 = time.perf_counter()

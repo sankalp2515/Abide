@@ -1,4 +1,4 @@
-"""IntentSeal Core Engine."""
+"""Abide Core Engine."""
 
 import os
 

@@ -7,7 +7,7 @@ case). A model-driven brain plugs in the same way in the Google build.
 Arms:
   none            - tools run directly
   ask-every-step  - every action that is not a read asks the employee (who, like real users, approves ~93%)
-  delegate        - IntentSeal Delegate: contract from the request, content firewall, gate, bound confirmations
+  delegate        - Abide: contract from the request, content firewall, gate, bound confirmations
 """
 
 from __future__ import annotations

@@ -1,9 +1,9 @@
-# IntentSeal Delegate: walkthrough and manual test guide
+# Abide: walkthrough and manual test guide
 
 For someone who has never seen the product. Follow it top to bottom; tick each check. Every screenshot was taken from
 the running app by `scripts/delegate_walkthrough.py` (re-run it after changes to refresh them).
 
-**What you are testing, in one line:** you give AI assistants a task in your own words; IntentSeal turns those words
+**What you are testing, in one line:** you give AI assistants a task in your own words; Abide turns those words
 into a short list of what they may do, lets them work, stops anything outside that list (even when a document tells
 them to do it), asks you only about exact actions that need you, and gives you a receipt of what happened.
 

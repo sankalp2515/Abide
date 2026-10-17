@@ -1,4 +1,4 @@
-# IntentSeal Delegate — design notes and build log
+# Abide — design notes and build log
 
 How the system was built: the architecture map, the milestones in the order they were delivered, and every design
 decision (D-D1 to D-D12) with its reason. For the current architecture see [ARCHITECTURE.md](ARCHITECTURE.md).

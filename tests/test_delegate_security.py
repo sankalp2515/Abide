@@ -1,4 +1,4 @@
-"""IntentSeal Delegate: judge-level probes kept as regression tests (security gaps found on 16 Oct and fixed)."""
+"""Abide: judge-level probes kept as regression tests (security gaps found on 16 Oct and fixed)."""
 
 import asyncio
 

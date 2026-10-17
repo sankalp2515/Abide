@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "intentseal-core"
 version = "0.1.0"
-description = "IntentSeal Core Engine: prompt-injection firewall and action guard for LLM agents"
+description = "Abide Core Engine: prompt-injection firewall and action guard for LLM agents"
 readme = "README.md"
 requires-python = ">=3.11"
 license = "Apache-2.0"

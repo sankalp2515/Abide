@@ -5,7 +5,7 @@ import { api } from "./api";
 // sessionStorage only, like the reviewer key. The public read-only key stays the default everywhere else.
 export interface Employee { key: string; name: string }
 
-const STORE = "intentseal.employee";
+const STORE = "abide.employee";
 let current: Employee | null = (() => {
   try {
     const raw = sessionStorage.getItem(STORE);
@@ -31,6 +31,14 @@ export async function signInEmployee(key: string): Promise<Employee> {
   const who = await api.whoami(key.trim());
   if (who.scope !== "project" && who.scope !== "admin") throw new Error("This key cannot act for an employee.");
   const e = { key: key.trim(), name: who.name };
+  set(e);
+  return e;
+}
+
+/** No key at hand: ask the service for a private 7-day trial key. Throws if the deployment does not offer them. */
+export async function startTrial(): Promise<Employee> {
+  const t = await api.trialKey();
+  const e = { key: t.key, name: t.name };
   set(e);
   return e;
 }

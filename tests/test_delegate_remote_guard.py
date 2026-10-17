@@ -75,7 +75,7 @@ def test_a_remote_adk_agent_is_held_to_the_card(app):
 
 def test_the_client_is_served_as_one_importable_file(app):
     _, tc = app
-    r = tc.get("/v1/sdk/intentseal_delegate.py")
+    r = tc.get("/v1/sdk/abide.py")
     assert r.status_code == 200 and "class RemoteAdkGuard" in r.text
-    compile(r.text, "intentseal_delegate.py", "exec")
+    compile(r.text, "abide.py", "exec")
     assert "import intentseal" not in r.text                     # self-contained: httpx only

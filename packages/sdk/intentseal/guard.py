@@ -173,7 +173,7 @@ class Guard:
         return _run(self.acheck(tool, args, session_id))
 
     def record_execution(self, result: ActionResult | str | None, executed: bool, detail: str = "") -> None:
-        """Execution receipt: tell IntentSeal whether an allowed call actually ran (the Console's provenance view shows
+        """Execution receipt: tell Abide whether an allowed call actually ran (the Console's provenance view shows
         it as evidence). Best effort: a receipt never breaks the tool call."""
         event_id = result.event_id if isinstance(result, ActionResult) else result
         if not event_id:

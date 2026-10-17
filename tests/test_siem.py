@@ -39,7 +39,7 @@ def test_record_fields_and_cef_escaping():
     assert rec["rule"]["name"] == "content-risk-block" and rec["organization"] == {"name": "acme"}
     assert rec["intentseal"]["ts"] == 1_760_000_000.25 and rec["intentseal"]["judge_tokens"] == 15
     line = siem.cef(rec)
-    assert line.startswith("CEF:0|IntentSeal|Gateway|") and "|content-risk-block|BLOCK content_in|8|" in line
+    assert line.startswith("CEF:0|Abide|Gateway|") and "|content-risk-block|BLOCK content_in|8|" in line
     assert "msg=Content risk | reached \\= block\\nthreshold" in line and "cs5=acme" in line and "cn1=91" in line
     assert siem.record(_row(decision="ALLOW", enforced="ALLOW"))["event"]["kind"] == "event"
 
@@ -71,7 +71,7 @@ def test_pull_export_jsonl_and_cef_with_continuation(client):
     nxt = client.get(f"/v1/export/decisions?since={recs[0]['intentseal']['ts']}&limit=1", headers=h).text.splitlines()
     assert len(nxt) == 1 and json.loads(nxt[0])["event"]["id"] == ids[1]
     cef = client.get(f"/v1/export/decisions?since={since}&format=cef", headers=h).text.splitlines()
-    assert len(cef) == 3 and all(x.startswith("CEF:0|IntentSeal|") for x in cef)
+    assert len(cef) == 3 and all(x.startswith("CEF:0|Abide|") for x in cef)
     assert client.get("/v1/export/decisions", headers={"Authorization": "Bearer nope"}).status_code == 401
 
 
@@ -117,7 +117,7 @@ def test_push_cef_over_syslog_udp():
     try:
         fw.submit(siem.record(_row()))
         data = srv.recv(65535).decode()
-        assert "CEF:0|IntentSeal|Gateway|" in data and "act=BLOCK" in data
+        assert "CEF:0|Abide|Gateway|" in data and "act=BLOCK" in data
     finally:
         fw.close()
         srv.close()

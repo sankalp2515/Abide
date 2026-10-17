@@ -2,32 +2,12 @@
 
 @custom-variant dark (&:where(.dark, .dark *));
 
-/* Replay evidence uses a continuous trace and a separate authorization boundary. */
-.provenance-heading { display: grid; gap: 12px; max-width: 760px; margin-bottom: 24px; }
-.provenance-summary { display: grid; grid-template-columns: repeat(2, minmax(0,1fr)); gap: 20px; padding: 20px 0; margin-bottom: 28px; border-top: 1px solid var(--line); border-bottom: 1px solid var(--line); }
-.provenance-layout { display: grid; gap: 32px; align-items: start; }
-.provenance-layout > *, .trace-step, .contract-clause > div { min-width: 0; }
-.trace-step { border: 1px solid var(--line); border-radius: 12px; padding: 16px 20px; background: var(--surface); overflow-wrap: anywhere; text-align: left; }
-.trace-connector { width: 1px; height: 20px; background: var(--line-strong); margin-left: 28px; }
-.evidence-chain { margin-top: 18px; }
-.contract-panel .space-y-6 { margin-top: 20px; }
-.trace-outcome { background: var(--surface-2); border-left: 3px solid var(--line-strong); }
-.contract-panel { border: 1px solid var(--line); border-radius: 14px; padding: 22px; background: var(--surface-2); overflow-wrap: anywhere; }
-.contract-group + .contract-group { padding-top: 20px; border-top: 1px solid var(--line); }
-.contract-clause { display: grid; grid-template-columns: 76px minmax(0,1fr); gap: 10px; align-items: start; }
-.contract-clause .tag { justify-self: start; margin-top: 3px; }
-.contract-details { padding-top: 16px; border-top: 1px solid var(--line); }
-.investigator-panel > div:first-child { align-items: start; }
-.investigator-panel > div:first-child > div { max-width: 420px; line-height: 1.7; }
-@media (min-width: 640px) { .provenance-summary { grid-template-columns: repeat(4,minmax(0,1fr)); } }
-@media (min-width: 1100px) { .provenance-layout { grid-template-columns: minmax(0,1.2fr) minmax(0,1fr); gap: 32px; } }
-
 @theme {
   --font-sans: "Segoe UI", "Segoe UI Variable", system-ui, -apple-system, Roboto, Arial, sans-serif;
   --font-mono: Consolas, "Cascadia Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
 }
 
-/* IntentSeal design tokens (from the IntentSeal material design: night-violet canvas, frosted lavender, one
+/* Abide design tokens ( night-violet canvas, frosted lavender, one
    blue -> violet -> magenta gradient for the primary action). Dark is the primary theme; light mirrors it. */
 :root {
   --bg: #f6f3ff;
@@ -185,7 +165,7 @@
 .sr-only { position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; border: 0; }
 .skip:focus { position: fixed; left: 12px; top: 12px; z-index: 50; width: auto; height: auto; clip: auto; }
 
-/* The public landing page keeps the material gate identity; console styles remain scoped above. */
+/* The one page: landing sections around the live workspace. */
 .landing-main { max-width: 1440px; margin: auto; padding: 40px 32px 0; }
 .landing-header { position: sticky; top: 0; z-index: 30; border-bottom: 1px solid var(--line); background: color-mix(in srgb, var(--bg) 92%, transparent); backdrop-filter: blur(16px); }
 .landing-header-inner { max-width: 1440px; min-height: 88px; padding: 16px 32px; margin: auto; display: flex; align-items: center; gap: 24px; }
@@ -222,9 +202,9 @@ button.text-link:disabled { opacity: .6; cursor: wait; }
 .landing-section { padding: 80px 0; border-bottom: 1px solid var(--line); scroll-margin-top: 112px; }
 .landing-section-heading { max-width: 850px; margin-bottom: 32px; }
 .landing-label { color: var(--accent-text); font-size: 13px; font-weight: 500; margin: 0 0 20px; }
-.landing-page h2 { font-size: clamp(28px, 3vw, 42px); font-weight: 400; letter-spacing: -.035em; line-height: 1.18; margin: 0 0 20px; }
-.landing-page h3 { font-size: 23px; font-weight: 400; letter-spacing: -.02em; line-height: 1.25; margin: 0 0 16px; }
-.landing-content p:not(.landing-label):not(.landing-microcopy):not(.landing-warning) { color: var(--muted); font-size: 16px; line-height: 1.75; }
+.landing-section h2, .landing-section-heading h2 { font-size: clamp(28px, 3vw, 42px); font-weight: 400; letter-spacing: -.035em; line-height: 1.18; margin: 0 0 20px; }
+.landing-section h3 { font-size: 23px; font-weight: 400; letter-spacing: -.02em; line-height: 1.25; margin: 0 0 16px; }
+.landing-section p:not(.landing-label):not(.landing-microcopy):not(.landing-warning) { color: var(--muted); font-size: 16px; line-height: 1.75; }
 .landing-intro { max-width: 760px; margin: 0 0 36px; }
 .landing-grid-two { display: grid; grid-template-columns: 1fr 1fr; gap: 40px; }
 .landing-grid-three { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 28px; }
@@ -337,7 +317,7 @@ button.text-link:disabled { opacity: .6; cursor: wait; }
   .landing-section-heading { margin-bottom: 24px; }
   .landing-intro { margin-bottom: 28px; }
   .landing-label { margin-bottom: 16px; }
-  .landing-content p:not(.landing-label):not(.landing-microcopy):not(.landing-warning) { font-size: 15px; }
+  .landing-section p:not(.landing-label):not(.landing-microcopy):not(.landing-warning) { font-size: 15px; }
   .landing-flow-panel { padding: 22px; }
   .landing-evidence-panel { padding: 22px; }
   .landing-evidence-panel .pill { white-space: normal; text-align: left; font-size: 12px; }

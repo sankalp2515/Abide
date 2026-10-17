@@ -5,7 +5,7 @@ build-backend = "setuptools.build_meta"
 [project]
 name = "intentseal-gateway"
 version = "0.1.0"
-description = "IntentSeal Delegate gateway: Delegate API, content filter API, Console host, LLM proxy"
+description = "Abide gateway: Delegate API, content filter API, Console host, LLM proxy"
 requires-python = ">=3.11"
 dependencies = ["intentseal-core", "intentseal", "fastapi>=0.110", "uvicorn[standard]", "pyyaml",
                 "reportlab>=4"]   # reportlab renders the sandbox PDFs of the live demo

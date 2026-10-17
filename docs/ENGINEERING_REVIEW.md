@@ -1,4 +1,4 @@
-# IntentSeal Delegate: engineering review (16 Oct 2026, before Google integration)
+# Abide: engineering review (16 Oct 2026, before Google integration)
 
 Each role reviewed the system from its angle; every finding below was checked against the code before it was
 accepted. "Fixed" items have tests (`tests/test_delegate_*.py`).

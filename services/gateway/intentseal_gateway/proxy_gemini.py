@@ -4,7 +4,7 @@
     POST /proxy/<agent>/gemini/v1beta/models/<model>:streamGenerateContent?alt=sse
 
 Point the Google Gen AI SDK at the gateway (`http_options={"base_url": "<gateway>/proxy/<agent>/gemini"}`) with the
-IntentSeal key as its API key. The same checkpoints as the OpenAI and Anthropic formats: user text, retrieved
+Abide key as its API key. The same checkpoints as the OpenAI and Anthropic formats: user text, retrieved
 documents in the system instruction or user text (`<context>` tags), inline images and PDFs and function responses
 (tool results) are inspected before the model sees them; function calls are checked before the agent sees them;
 protected data in the answer is redacted or withheld. The agent's upstream must be the `gemini` provider (native

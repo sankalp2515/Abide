@@ -1,4 +1,4 @@
-"""IntentSeal Delegate API. Two groups of routes:
+"""Abide API. Two groups of routes:
 
 /v1/delegations/...     for any agent framework: start a delegation from the employee's request, confirm it, amend it
                         with the employee's next words, inspect content, seal handoffs, check tool calls, report what
@@ -466,7 +466,7 @@ async def demo_say(wf: str, body: WordsRequest, request: Request, p: Principal =
 
 @router.get("/v1/delegate-eval")
 async def delegate_eval(request: Request) -> dict[str, Any]:
-    """The latest local evaluation of IntentSeal Delegate (eval/reports/delegate-local.json), summarised. Public."""
+    """The latest local evaluation of Abide (eval/reports/delegate-local.json), summarised. Public."""
     import json as _json
     path = request.app.state.reports / "delegate-local.json"
     if not path.is_file():
@@ -479,6 +479,7 @@ async def delegate_eval(request: Request) -> dict[str, Any]:
 
 # ---- the client, as one file (for notebooks and quick starts: no package to install) -------------------------------
 
+@router.get("/v1/sdk/abide.py", include_in_schema=False)
 @router.get("/v1/sdk/intentseal_delegate.py", include_in_schema=False)
 async def sdk_client() -> Any:
     """The Delegate client and Google ADK guard (`intentseal.delegate`), served as a single importable file."""

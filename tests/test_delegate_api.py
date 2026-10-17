@@ -1,4 +1,4 @@
-"""IntentSeal Delegate gateway API: the live Ravi demo through HTTP, and the general routes' scopes."""
+"""Abide gateway API: the live Ravi demo through HTTP, and the general routes' scopes."""
 
 from __future__ import annotations
 
