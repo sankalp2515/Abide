@@ -1,6 +1,6 @@
-# Abide: one-time setup and deploy to Cloud Run. Run from the repository root in PowerShell.
+﻿# Abide: one-time setup and deploy to Cloud Run. Run from the repository root in PowerShell.
 #
-#   .\scripts\deploy_cloud_run.ps1 -Project my-intentseal-project [-Region asia-southeast1]
+#   .\scripts\deploy_cloud_run.ps1 -Project my-intentseal-project [-Region us-central1]
 #
 # Every command names -Project explicitly: the machine's active gcloud project is never read or changed.
 # What it does (each step is idempotent):
@@ -11,7 +11,7 @@
 #   5. lets Cloud Build build, push and deploy (deploy/cloudbuild.yaml)
 param(
   [Parameter(Mandatory = $true)][string]$Project,
-  [string]$Region = "asia-southeast1",
+  [string]$Region = "us-central1",
   [string]$ArmorLocation = "us-central1",
   [string]$PublicKey = ""
 )
