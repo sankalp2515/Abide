@@ -2,16 +2,14 @@
 
 ## 0.3.0 — 2026-10-17
 
-- New name: **Abide** ("AI agents that abide by your words").
-- The Console is one page with no tabs: hero, then the live workspace (Ask → Confirm once → Agents work → Receipt),
-  evidence, bring your own agent, and questions.
-- Review panel slides in with the page dimmed behind it; the permission card looks like a company card (limits,
-  valid for this task only); the confirm button glows; agents shown as a live flow; blocked actions as red
-  "Action blocked" cards with where they came from; one-action approval dialog with its fingerprint; receipt timeline.
-- Three scenario cards (a normal day, hidden attack, hijacked agent) replace the settings; no key to type when the
-  service offers trial keys (on by default in Docker Compose).
+- New name: **Abide** ("AI agents that abide by your words"), with its own mark.
+- New landing page: centred hero with a live product preview (the card, the agents' steps, blocked actions and the
+  receipt, playing on a loop), a built-on-Google strip, a before/after comparison from the measured numbers, how it
+  works with a small interface for each step, use cases, evidence, a developer section and a call to action.
+- The console pages (Delegate, Agents, Replay, Decisions, Review, Policy) keep their design; the Delegate sign-in
+  offers a one-click free trial key.
 - The one-file client is served at `/v1/sdk/abide.py` (the old path still works); the Colab notebook is
-  `examples/colab/abide_quickstart.ipynb`.
+  `examples/colab/abide_quickstart.ipynb`; trial keys are on by default in Docker Compose.
 
 ## 0.2.0 — 2026-10-17
 

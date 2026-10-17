@@ -299,7 +299,7 @@ export const api = {
     call<Investigation>(`/v1/sessions/${encodeURIComponent(sessionId)}/investigate`, { method: "POST" }),
 };
 
-/* ---- Delegation (Abide) -------------------------------------------------------------------- */
+/* ---- Abide -------------------------------------------------------------------- */
 export interface DClause {
   id: string; effect: "permit" | "prohibit"; action: string; values: Record<string, string[]>; quote: string;
   origin: string; note: string; plain: string; verified?: boolean; superseded_by?: string | null;
