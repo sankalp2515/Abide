@@ -100,7 +100,8 @@ def test_trial_keys_are_self_serve_private_and_limited(client):
     s = client.post("/v1/delegate-demo", json={"agents": "scripted"}, headers=H(key)).json()
     wf = s["workflow"]["id"]
     assert client.get(f"/v1/delegate-demo/{wf}", headers=H(ALICE)).status_code in (403, 404)    # private
-    assert client.post("/v1/trial-keys").status_code == 201
-    assert client.post("/v1/trial-keys").status_code == 201
-    assert client.post("/v1/trial-keys").status_code == 429                                       # 3 per hour
+    from intentseal_gateway.security import TRIAL_PER_ADDRESS_PER_HOUR
+    for _ in range(TRIAL_PER_ADDRESS_PER_HOUR - 1):
+        assert client.post("/v1/trial-keys").status_code == 201
+    assert client.post("/v1/trial-keys").status_code == 429                                       # per address, per hour
     assert client.get("/v1/whoami", headers=H("isk_trial_not-a-real-key")).status_code == 401

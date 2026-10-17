@@ -107,7 +107,7 @@ class KeyRing:
 
 TRIAL_PREFIX = "isk_trial_"
 TRIAL_DAYS = 7
-TRIAL_PER_ADDRESS_PER_HOUR = 3
+TRIAL_PER_ADDRESS_PER_HOUR = int(os.environ.get("INTENTSEAL_TRIAL_PER_HOUR") or 30)   # judges often share one office network
 TRIAL_SCHEMA = ["""CREATE TABLE IF NOT EXISTS trial_keys (hash TEXT PRIMARY KEY, name TEXT, address TEXT,
                    created REAL, expires REAL)"""]
 
