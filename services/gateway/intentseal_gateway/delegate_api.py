@@ -10,6 +10,8 @@ Scopes: reading needs any key; acting needs a project key (an employee's app or 
 
 from __future__ import annotations
 
+import asyncio
+
 import base64
 import json
 import time
@@ -23,6 +25,7 @@ from pydantic import BaseModel, Field
 from intentseal_core.delegate import load_delegate_policy
 from intentseal_core.delegate.compiler import ModelDrafter
 from intentseal_core.delegate.handoff import SealError
+from intentseal_core.delegate.bigquery import BigQuery
 from intentseal_core.delegate.explain import ModelExplainer
 from intentseal_core.delegate.receipts import ModelWriter
 from intentseal_core.delegate.service import DelegateError, DelegateForbidden, DelegateService
@@ -107,12 +110,13 @@ def _services(request: Request) -> dict[str, DelegateService]:
         drafter = ModelDrafter(router_) if "contract" in roles else None
         writer = ModelWriter(router_) if "receipt" in roles else None
         explainer = ModelExplainer(router_) if "explain" in roles else None
+        analytics = app.state.delegate_analytics = BigQuery.from_env()   # INTENTSEAL_BIGQUERY_DATASET
         from intentseal_core.delegate.model_armor import ModelArmor
         armor = ModelArmor.from_env()           # INTENTSEAL_MODEL_ARMOR_TEMPLATE: Google Model Armor as a second screen
-        app.state.delegate_parts = (engine, drafter, writer, armor, explainer)
+        app.state.delegate_parts = (engine, drafter, writer, armor, explainer, analytics)
         svcs = app.state.delegate_services = {
             name: DelegateService(load_delegate_policy(name), engine=engine, drafter=drafter, writer=writer,
-                                  model_armor=armor, explainer=explainer)
+                                  model_armor=armor, explainer=explainer, analytics=analytics)
             for name in WORKSPACES}
         log.info("delegate: drafter=%s writer=%s model_armor=%s", drafter.name if drafter else "rules",
                  writer.name if writer else "template", armor.template if armor else "off")
@@ -163,9 +167,9 @@ def _custom_service(request: Request, wid: str) -> DelegateService | None:
     row = _custom_row(request, wid)
     if row is None:
         return None
-    engine, drafter, writer, armor, explainer = request.app.state.delegate_parts
+    engine, drafter, writer, armor, explainer, analytics = request.app.state.delegate_parts
     svc = DelegateService(custom_delegate_policy(json.loads(row["policy"]), wid), engine=engine, drafter=drafter,
-                          writer=writer, model_armor=armor, explainer=explainer)
+                          writer=writer, model_armor=armor, explainer=explainer, analytics=analytics)
     cache[wid] = svc
     while len(cache) > CUSTOM_CACHE:
         cache.popitem(last=False)
@@ -230,6 +234,23 @@ async def register_workspace(body: WorkspaceRequest, request: Request,
     getattr(request.app.state, "delegate_custom", {}).pop(body.id, None)
     return {"id": body.id, "tools": {n: t.action for n, t in policy.tools.items()},
             "contacts": len(policy.contacts), "resources": len(policy.resources), "records": len(policy.records)}
+
+
+@router.get("/v1/insights")
+async def insights(request: Request, days: int = 30, p: Principal = require("public")) -> dict[str, Any]:
+    """BigQuery over every receipt: decisions, what agents were stopped from doing, where the instructions came
+    from, per day. A project key sees its own work, an admin everything, the public Console the built-in sandboxes."""
+    svcs = _services(request)
+    bq = getattr(request.app.state, "delegate_analytics", None)
+    if bq is None:
+        raise HTTPException(404, "analytics are not configured (INTENTSEAL_BIGQUERY_DATASET)")
+    scope = p.scope if p.scope in ("admin", "project") else "public"
+    try:
+        return await asyncio.to_thread(bq.insights, p.name, scope, tuple(s.policy.workspace for s in svcs.values()),
+                                       max(1, min(days, 365)))
+    except Exception as e:
+        log.warning("insights failed: %s", str(e)[:200])
+        raise HTTPException(503, "BigQuery is unavailable right now") from None
 
 
 @router.get("/v1/delegate-workspaces")

@@ -92,8 +92,11 @@ def for_agent(reason: str) -> str:
 class DelegateService:
     def __init__(self, policy: DelegatePolicy, engine: Any = None, store: Store | None = None,
                  drafter: Drafter | None = None, writer: Writer | None = None, secret: bytes | None = None,
-                 inspect_content: bool = True, model_armor: Any = None, explainer: Any = None) -> None:
+                 inspect_content: bool = True, model_armor: Any = None, explainer: Any = None,
+                 analytics: Any = None) -> None:
         self.policy, self.engine = policy, engine
+        self.analytics = analytics            # optional: every receipt also streamed to BigQuery (best effort)
+        self._principals: OrderedDict[str, str] = OrderedDict()
         self.explainer = explainer            # optional: words a block or a question for the employee (advice only)
         self.model_armor = model_armor        # optional second screen (Google Model Armor) on what agents receive
         self.store = store or (engine.store if engine is not None else Store(":memory:"))
@@ -169,8 +172,25 @@ class DelegateService:
                                    "agent": agent, "tool": tool, "decision": decision,
                                    "ruling": (data or {}).get("ruling"), "traced_to": bool((data or {}).get("traced_to")),
                                    "approval": (data or {}).get("approval"), "hash": row["hash"]}))
+            if self.analytics is not None:
+                self._stream(row)
             return row["rid"]
         raise DelegateError("could not record the receipt; try again")
+
+    def _stream(self, row: dict[str, Any]) -> None:
+        """A copy for BigQuery, tagged with whose work it is (so each key's insights show only its own)."""
+        from .bigquery import receipt_row
+        wid = row["workflow_id"]
+        principal = self._principals.get(wid)
+        if principal is None:
+            try:
+                principal = self.owner_of(wid)
+            except DelegateError:
+                principal = ""
+            self._principals[wid] = principal
+            while len(self._principals) > self.cache_size:
+                self._principals.popitem(last=False)
+        self.analytics.emit(receipt_row(row, self.policy.workspace, principal))
 
     def _tracker(self, workflow_id: str) -> TaintTracker:
         t = self._taint.get(workflow_id)

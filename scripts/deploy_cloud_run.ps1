@@ -86,6 +86,18 @@ if (-not (gcloud sql instances list --filter="name=abide-db" --format="value(nam
 gcloud projects add-iam-policy-binding $Project --member="serviceAccount:$sa" --role=roles/cloudsql.client `
   --condition=None | Out-Null
 
+# BigQuery: every receipt streamed to abide_audit.receipts for analysis (the Console's insights panel).
+gcloud services enable bigquery.googleapis.com $P
+if (-not (bq --project_id=$Project ls --datasets --format=json | Select-String '"abide_audit"')) {
+  bq --project_id=$Project mk --dataset --location=US --description="Abide receipts for analysis" "${Project}:abide_audit"
+  bq --project_id=$Project mk --table --time_partitioning_field=created --time_partitioning_type=DAY `
+    --clustering_fields=principal,decision "${Project}:abide_audit.receipts" `
+    "workflow_id:STRING,seq:INT64,rid:STRING,kind:STRING,agent:STRING,tool:STRING,decision:STRING,reason:STRING,ruling:STRING,traced_to:STRING,explanation:STRING,workspace:STRING,principal:STRING,created:TIMESTAMP,hash:STRING,data:STRING"
+}
+foreach ($role in "roles/bigquery.dataEditor", "roles/bigquery.jobUser") {
+  gcloud projects add-iam-policy-binding $Project --member="serviceAccount:$sa" --role=$role --condition=None | Out-Null
+}
+
 gcloud builds submit --config deploy/cloudbuild.yaml $P `
   --substitutions="_REGION=$Region,_PUBLIC_KEY=$PublicKey,_SA=$sa,_ARMOR_LOCATION=$ArmorLocation"
 gcloud run services describe abide --region=$Region --format="value(status.url)" $P
