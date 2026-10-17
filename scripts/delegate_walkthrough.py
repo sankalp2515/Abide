@@ -123,7 +123,7 @@ def main() -> None:
         # Phone width
         phone = browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True)
         phone.goto(f"{BASE}/delegate")
-        phone.evaluate("sessionStorage.setItem('intentseal.employee', JSON.stringify({key: 'local-project-key', name: 'local'}))")
+        phone.evaluate("sessionStorage.setItem('abide.employee', JSON.stringify({key: 'local-project-key', name: 'local'}))")
         phone.reload()
         expect(phone.get_by_role("button", name="Prepare my assistants")).to_be_visible()
         shot(phone, "18-phone-start")

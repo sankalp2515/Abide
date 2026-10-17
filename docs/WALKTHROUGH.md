@@ -80,10 +80,10 @@ Mark each one Pass or Fail. "Expected" is what you must see.
 
 | # | Do this | Expected | |
 |---|---|---|---|
-| 1.1 | Open the Delegate page | "Sign in as an employee" with a key box ![](walkthrough/02-sign-in.png) | ☐ |
-| 1.2 | Type `wrong-key`, Continue | "That key wasn't accepted. Check it and try again." and you stay on the sign-in ![](walkthrough/03-sign-in-wrong-key.png) | ☐ |
-| 1.3 | Type `local-public-key`, Continue | "This key cannot act for an employee." | ☐ |
-| 1.4 | Type `local-project-key`, Continue | "Ask your assistants" with Office selected, Ravi's request filled in ![](walkthrough/04-start-office.png) | ☐ |
+| 1.1 | Open the Delegate page | "Sign in as an employee" with **Start a free trial** and a key box ![](walkthrough/02-sign-in.png) | ☐ |
+| 1.2 | Type `wrong-key`, **Continue with key** | "That key wasn't accepted. Check it and try again." and you stay on the sign-in ![](walkthrough/03-sign-in-wrong-key.png) | ☐ |
+| 1.3 | Type `local-public-key`, **Continue with key** | "This key cannot act for an employee." | ☐ |
+| 1.4 | Type `local-project-key`, **Continue with key** (or click **Start a free trial**: a private 7-day key, no typing) | "Ask your assistants" with Office selected, Ravi's request filled in ![](walkthrough/04-start-office.png) | ☐ |
 
 ### T2. Office: the normal path (attack hidden in the quote PDF, filter on)
 

@@ -60,3 +60,12 @@ Method and limits: [EVAL.md](EVAL.md).
 | Docker with Google (`docker-compose.google.yml`), 12 checks | 12 of 12: ready with Vertex AI; trial key; one-file client served; live Gemini agents; card and receipt by `model:vertex/gemini-3.5-flash`; agents in the background (confirm in 2.7 s, work in 34 s); hijacked agent's ₹48,000 refund and customer export stopped and traced to the ticket while the ₹1,850 refund ran; Model Armor screened every read; a business registered with a trial key governs its own recipients |
 | Colab quickstart, run against a live gateway | trial key, travel agency registered, card by Vertex AI, remote Gemini ADK agent under the card, receipt chain intact |
 | Live agent runs | see [EVAL.md](EVAL.md), "Live runs with real Gemini agents" |
+
+## Abide rename and landing page — 0.3.0 (17 Oct 2026)
+
+| Check | Result |
+|---|---|
+| Python tests / lint | 199 passed, 5 skipped / clean |
+| Console types / tests | clean / 8 of 8 |
+| Browser journey (headless Edge, Docker, stand-in agents) | all 18 steps of [WALKTHROUGH.md](WALKTHROUGH.md); screenshots refreshed with the new landing page and the trial sign-in |
+| Docker with Google, 13 checks | 13 of 13: Console served as Abide; trial key; `/v1/sdk/abide.py`; live Gemini agents; card and receipt by Vertex AI; hijacked agent's ₹48,000 refund and customer export stopped and traced to the ticket while the ₹1,850 refund ran; Model Armor on every read; a registered business governs its own recipients |
