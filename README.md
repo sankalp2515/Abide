@@ -78,6 +78,24 @@ gcloud auth application-default login
 GOOGLE_ADC=<path to application_default_credentials.json> docker compose -f docker-compose.yml -f docker-compose.google.yml up -d
 ```
 
+### Try it with a team of three agents
+
+`examples/agent-team` is a small bookshop's back office (Intake, Accountant, Notifier). It works through Abide the
+way an outside company would: it downloads the one-file client, registers its business, and starts a task in plain
+words. The Accountant is hijacked on purpose; it obeys an instruction hidden in an invoice.
+
+```bash
+docker compose --profile agents run --rm agents
+```
+
+The team prints a link. Confirm its work order in **Tasks → Your agents**, then answer its one question in **Needs
+you**. Expected result:
+
+- **Runs:** the ₹12,400 payment of INV-1042, the email to Priya, and (after you approve it) the email to the finance
+  team.
+- **Stopped, traced to the invoice:** the ₹92,000 payment, the vendor-list export and the email to an outside auditor.
+- **On the Connect page:** the three agents under Connected agents.
+
 | Service | Image | Purpose |
 |---|---|---|
 | `gateway` | built from `Dockerfile` | API, Delegate service, Console (served at `/`), content filter, Gemini agents (Google ADK). Non-root, all capabilities dropped. |

@@ -199,7 +199,7 @@ export function Layout({ children }: { children: ReactNode }) {
       <div className="min-h-screen lg:flex">
         <Sidebar status={status} theme={theme} />
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 py-8 sm:px-8 lg:px-12 lg:py-10">
-          <div className="mx-auto max-w-[1240px]">
+          <div className="mx-auto max-w-[1320px]">
             <StatusBanner status={status} />
             <div key={pathname} className="settle">{children}</div>
             <footer className="subtle mt-16 flex flex-col gap-2 border-t pt-6 text-[12px] sm:flex-row sm:justify-between" style={{ borderColor: "var(--line)" }}>

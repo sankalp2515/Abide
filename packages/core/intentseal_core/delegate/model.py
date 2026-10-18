@@ -123,7 +123,8 @@ class DelegatePolicy(BaseModel):
             m = re.fullmatch(r"(?:(?:" + "|".join(map(re.escape, rt.words or [rt.type])) + r")s?\s*[-#:]?\s*"
                              r"(?:no\.?|number)?\s*#?\s*|#\s*)(" + rt.pattern + r")", k, re.I)
             if m:
-                return Resource(id=f"{rt.type}:{m.group(1)}", name=f"{rt.type} {m.group(1)}", data_class=rt.data_class)
+                rid = record_id(rt, m.group(1))
+                return Resource(id=f"{rt.type}:{rid}", name=f"{rt.type} {rid}", data_class=rt.data_class)
         k_id = k.split(":", 1)
         if len(k_id) == 2:
             rt2 = next((r for r in self.records if r.type == k_id[0]), None)
@@ -198,7 +199,7 @@ class DelegatePolicy(BaseModel):
             words = "|".join(map(re.escape, rt.words or [rt.type]))
             for m in re.finditer(r"(?<![a-z0-9])(?:(?:" + words + r")s?\s*[-#:]?\s*(?:no\.?|number)?\s*#?\s*|#)(" +
                                  rt.pattern + r")(?![0-9])", low, re.I):
-                rid = f"{rt.type}:{m.group(1)}"
+                rid = f"{rt.type}:{record_id(rt, m.group(1))}"
                 if all(v != rid for _, v in found["resource"]):
                     found["resource"].append((m.group().strip(), rid))
         # "the customer" = the owner of a record named in the same words, from the system of record
@@ -374,6 +375,17 @@ def _flat(value: Any) -> list[str]:
     if isinstance(value, (list, tuple)):
         return [x for v in value for x in _flat(v)]
     return [str(value)]
+
+
+def record_id(rt: Any, value: str) -> str:
+    """One spelling per record, however it was written: "INV-1042", "inv-1042", "#1042" and "1042" are invoice 1042.
+    A code pattern can swallow the type word's own prefix ("invoice INV-1042"), so a leading type word is dropped."""
+    v = value.strip().lower().lstrip("#")
+    words = "|".join(map(re.escape, rt.words or [rt.type]))
+    m = re.fullmatch(r"(?:" + words + r")s?\s*[-#:]?\s*(.+)", v, re.I)
+    if m and re.fullmatch(rt.pattern, m.group(1)):
+        v = m.group(1)
+    return v
 
 
 def call_values(spec: ToolSpec, args: dict[str, Any], policy: DelegatePolicy) -> dict[str, list[str]]:

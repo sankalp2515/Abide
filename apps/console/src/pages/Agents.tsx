@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { serviceOrigin, tasks, type DApproval, type DEvent, type DReceipt, type DReport, type DState, type DTaskRow } from "../api";
 import { signOutEmployee, useEmployee } from "../employee";
 import { Empty, ErrorNote, PageHeader, Stamp, ago } from "../components/ui";
-import { ApprovalCard, KeyGate, StepRow, WorkOrder } from "./Delegate";
+import { AgentTeam, ApprovalCard, KeyGate, StepRow, TaskProgress, WorkOrder } from "./Delegate";
 
 /* "Your agents": the tasks your own agents run through the API (the one-file client, ADK, LangChain, MCP …), with
    the same work order, questions and receipt as the sandbox. Sign in with the key your agent uses. */
@@ -103,6 +103,8 @@ export function TaskDetail({ apiKey, wf }: { apiKey: string; wf: string }) {
   return (
     <div className="space-y-6">
       {error && <ErrorNote>{error}</ErrorNote>}
+      <TaskProgress confirmed={confirmed} events={steps} waiting={pending.length} working={false} hasReceipt={!!report} />
+      {steps.length > 0 && <AgentTeam events={steps} working={false} live={false} />}
       <WorkOrder state={state} busy={busy} onConfirm={(accept) => act(() => tasks.confirm(apiKey, wf, state.contract.hash, accept))}>
         {confirmed && (
           <form className="flex flex-col gap-2 border-t pt-4 sm:flex-row" style={{ borderColor: "var(--line)" }} onSubmit={(e) => { e.preventDefault(); if (words.trim()) act(() => tasks.amend(apiKey, wf, words)).then(() => setWords("")); }}>

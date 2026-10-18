@@ -105,3 +105,15 @@ def test_trial_keys_are_self_serve_private_and_limited(client):
         assert client.post("/v1/trial-keys").status_code == 201
     assert client.post("/v1/trial-keys").status_code == 429                                       # per address, per hour
     assert client.get("/v1/whoami", headers=H("isk_trial_not-a-real-key")).status_code == 401
+
+
+def test_a_code_record_is_one_record_however_it_is_written():
+    """'invoice INV-1042' in the request and 'INV-1042' in the agent's call are the same invoice."""
+    from intentseal_core.delegate.model import call_values, custom_delegate_policy
+    pol = custom_delegate_policy({
+        "tools": {"pay_invoice": {"action": "purchase", "resource_args": ["invoice_id"], "amount_args": ["amount"]}},
+        "records": [{"type": "invoice", "words": ["invoice", "inv"], "pattern": "code"}]}, "books")
+    spec = pol.tools["pay_invoice"]
+    ids = {call_values(spec, {"invoice_id": v, "amount": 1}, pol)["resource"][0] for v in ("INV-1042", "inv-1042", "1042")}
+    assert ids == {"invoice:1042"}
+    assert pol.record("invoice INV-1042").id == "invoice:1042"

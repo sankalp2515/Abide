@@ -53,7 +53,7 @@ export function stepText(tool: string, args: Record<string, unknown>): string {
   const a = args as Record<string, string>;
   if (!(tool in TOOL_TEXT)) {   // your own tools: the tool in words and the values that say what it touched
     const vals = Object.entries(a).filter(([k, v]) => typeof v === "string" && !["body", "subject", "content", "text"].includes(k) && v.length < 60)
-      .map(([k, v]) => (k === "to" ? `to ${v}` : k.endsWith("_id") ? `${k.slice(0, -3).replaceAll("_", " ")} ${v}` : v));
+      .map(([k, v]) => (k === "to" ? `to ${v}` : k.endsWith("_id") && !tool.includes(k.slice(0, -3)) ? `${k.slice(0, -3).replaceAll("_", " ")} ${v}` : v));
     return `${tool.replaceAll("_", " ")}${vals.length ? ` ${vals.join(" · ")}` : ""}`;
   }
   const target = [a.name, a.ticket_id && `ticket ${a.ticket_id}`, a.order_id && `order ${String(a.order_id).replace("#", "")}`,
@@ -186,6 +186,67 @@ export function StepRow({ e, n }: { e: DEvent; n: number }) {
         {e.explain && <p className="m-0 text-[14px] leading-relaxed" style={{ color: "var(--muted)" }}><span className="mono mr-1.5" style={{ color: "var(--accent)" }}>GEMINI</span>{e.explain}</p>}
       </div>}
     </li>
+  );
+}
+
+/** Where the task is, as a stepper: work order, reading, acting, questions, receipt. */
+export function TaskProgress({ confirmed, events, waiting, working, hasReceipt }: {
+  confirmed: boolean; events: DEvent[]; waiting: number; working: boolean; hasReceipt: boolean;
+}) {
+  const reads = events.filter((e) => /^(read|list|lookup|screened|open)/.test(e.tool)).length;
+  const acts = events.length - reads;
+  const stopped = events.filter((e) => e.outcome === "blocked").length;
+  const steps: { label: string; detail: string; state: "done" | "now" | "todo" | "warn" }[] = [
+    { label: "Work order", detail: confirmed ? "confirmed once" : "check and confirm", state: confirmed ? "done" : "now" },
+    { label: "Reading", detail: reads ? `${reads} read, screened` : "waits for the order", state: reads ? "done" : confirmed && working ? "now" : "todo" },
+    { label: "Acting", detail: acts ? `${acts} actions${stopped ? ` · ${stopped} stopped` : ""}` : "nothing yet", state: stopped ? "warn" : acts ? (working ? "now" : "done") : "todo" },
+    { label: "Needs you", detail: waiting ? `${waiting} question${waiting > 1 ? "s" : ""}` : "no questions", state: waiting ? "warn" : confirmed && !working ? "done" : "todo" },
+    { label: "Receipt", detail: hasReceipt ? "sealed and cited" : "when the work ends", state: hasReceipt ? "done" : "todo" },
+  ];
+  const tone = (st: string) => st === "done" ? "var(--allow)" : st === "warn" ? (st === "warn" && stopped ? "var(--block)" : "var(--neutralise)") : st === "now" ? "var(--accent)" : "var(--line-strong)";
+  return (
+    <ol className="card m-0 grid list-none grid-cols-2 gap-0 overflow-hidden p-0 sm:grid-cols-5" aria-label="Task progress">
+      {steps.map((st, i) => (
+        <li key={st.label} className="relative flex flex-col gap-1 px-4 py-3" style={{ borderTop: `3px solid ${tone(st.state)}`, background: st.state === "now" ? "var(--surface-2)" : undefined }}>
+          <span className="mono flex items-center gap-2 text-[11px]" style={{ color: st.state === "todo" ? "var(--subtle)" : tone(st.state) }}>
+            {st.state === "now" ? <span className="lg-live" style={{ fontSize: 11 }}><i /></span> : <span aria-hidden>{st.state === "done" ? "✓" : st.state === "warn" ? "!" : "○"}</span>}
+            {String(i + 1).padStart(2, "0")}
+          </span>
+          <b className="text-[14px] font-semibold">{st.label}</b>
+          <span className="subtle text-[12px]">{st.detail}</span>
+        </li>
+      ))}
+    </ol>
+  );
+}
+
+/** The agent team as a strip of nodes: who did what, the sealed handoff between them, and who is working now. */
+export function AgentTeam({ events, working, live }: { events: DEvent[]; working: boolean; live: boolean }) {
+  const order: string[] = [];
+  for (const e of events) if (e.agent && !order.includes(e.agent)) order.push(e.agent);
+  if (!order.length) return null;
+  const active = working ? events[events.length - 1]?.agent : undefined;
+  return (
+    <div className="card flex flex-wrap items-stretch gap-2 p-4" aria-label="Agent team">
+      <span className="section-label w-full">Agent team · {live ? "Gemini on Google ADK" : "agents"}</span>
+      {order.map((a, i) => {
+        const mine = events.filter((e) => e.agent === a);
+        const st = mine.filter((e) => e.outcome === "blocked").length;
+        return (
+          <div key={a} className="flex items-center gap-2">
+            {i > 0 && <span className="mono subtle flex flex-col items-center px-1 text-[10px] leading-tight" aria-label="sealed handoff">
+              <svg width="40" height="12" viewBox="0 0 40 12" aria-hidden><path d="M0 6h34M30 2l5 4-5 4" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray={working ? "4 3" : undefined}>{working && <animate attributeName="stroke-dashoffset" from="14" to="0" dur="0.8s" repeatCount="indefinite" />}</path></svg>
+              sealed</span>}
+            <div className="flex items-center gap-3 rounded-md px-3 py-2" style={{ border: `1.5px solid ${a === active ? "var(--accent)" : "var(--line)"}`, background: a === active ? "var(--accent-wash)" : "var(--surface)" }}>
+              <span aria-hidden className="grid h-8 w-8 place-items-center rounded text-[12px] font-bold" style={{ background: "var(--surface-2)", color: "var(--accent)" }}>{a.slice(0, 2).toUpperCase()}</span>
+              <span className="flex flex-col"><b className="text-[14px] font-semibold capitalize">{a}</b>
+                <span className="subtle text-[12px]">{mine.length} steps{st ? <span style={{ color: "var(--block)" }}> · {st} stopped</span> : ""}</span></span>
+              {a === active && <span className="lg-live"><i /></span>}
+            </div>
+          </div>
+        );
+      })}
+    </div>
   );
 }
 
@@ -387,7 +448,13 @@ export function Delegate({ open, onOpened, onNew, onMissing, embedded = false }:
       {error && <ErrorNote>{error}</ErrorNote>}
 
       {state && (
-        <div className={confirmed ? `grid items-start gap-6 ${embedded ? "2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"}` : "mx-auto grid max-w-[880px] gap-6"}>
+        <div className="space-y-4">
+          <TaskProgress confirmed={!!confirmed} events={events} waiting={pending.length} working={!!working} hasReceipt={!!state.report} />
+          {events.length > 0 && <AgentTeam events={events} working={!!working} live={state.demo?.agents === "gemini"} />}
+        </div>
+      )}
+      {state && (
+        <div className={embedded ? "grid gap-6" : confirmed ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "mx-auto grid max-w-[880px] gap-6"}>
           <WorkOrder state={state} busy={busy} onConfirm={(accept) => act(() => delegate.confirm(employee.key, state.workflow.id, state.contract.hash, accept))}>
             {confirmed && (
               <form className="flex flex-col gap-2 border-t pt-4 sm:flex-row" style={{ borderColor: "var(--line)" }} onSubmit={(e) => { e.preventDefault(); act(() => delegate.say(employee.key, state.workflow.id, words)); }}>

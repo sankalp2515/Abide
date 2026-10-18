@@ -2,6 +2,7 @@
 #
 #   cp .env.example .env            # optional: add GEMINI_API_KEY to let Gemini draft cards and write receipts
 #   docker compose up --build -d    # Console: http://localhost:8000  ·  API docs: http://localhost:8000/docs
+#   docker compose --profile agents run --rm agents   # optional: a 3-agent test team that works through Abide
 #   docker compose ps               # both services should become "healthy"
 #   docker compose down             # stop (data stays in the named volumes; add -v to delete it)
 #
@@ -60,6 +61,23 @@ services:
     restart: unless-stopped
     stop_grace_period: 30s
     mem_limit: 3g
+    security_opt: ["no-new-privileges:true"]
+    cap_drop: ["ALL"]
+
+  # A three-agent test team (Northwind Books) that works through Abide like an outside company. Not started by
+  # default:  docker compose --profile agents run --rm agents   (then confirm and answer in the browser)
+  agents:
+    profiles: [agents]
+    build: ./examples/agent-team
+    image: abide-agent-team:local
+    depends_on:
+      gateway: { condition: service_healthy }
+    environment:
+      ABIDE_URL: http://gateway:8000
+      ABIDE_KEY: ${ABIDE_AGENT_KEY:-local-project-key}
+      ABIDE_CONSOLE: http://localhost:8000
+      HIJACKED: ${HIJACKED:-1}
+    mem_limit: 256m
     security_opt: ["no-new-privileges:true"]
     cap_drop: ["ALL"]
 

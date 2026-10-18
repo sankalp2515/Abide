@@ -35,6 +35,23 @@ def _ensure_key() -> None:
         os.environ["GOOGLE_API_KEY"] = os.environ["GEMINI_API_KEY"]
 
 
+_CREDS: list[str | None] = []
+
+
+def _google_credentials() -> str | None:
+    """Vertex AI needs Google credentials (Cloud Run's identity, or a mounted ADC file locally). Checked once: without
+    them live agents would start and fail on the first call, so the demo uses the stand-in agents instead."""
+    if not _CREDS:
+        try:
+            import google.auth
+            google.auth.default(scopes=["https://www.googleapis.com/auth/cloud-platform"])
+            _CREDS.append(None)
+        except Exception:
+            _CREDS.append("no Google credentials here (locally: docker-compose.google.yml with GOOGLE_ADC, or "
+                          "gcloud auth application-default login)")
+    return _CREDS[0]
+
+
 def available() -> str | None:
     """Why live Gemini agents cannot run here, or None when they can."""
     try:
@@ -43,7 +60,7 @@ def available() -> str | None:
         return "Google ADK is not installed"
     _ensure_key()
     if os.environ.get("GOOGLE_GENAI_USE_VERTEXAI", "").lower() in ("1", "true") and os.environ.get("GOOGLE_CLOUD_PROJECT"):
-        return None
+        return _google_credentials()
     if os.environ.get("GOOGLE_API_KEY"):
         return None
     return "no Gemini access (set GOOGLE_CLOUD_PROJECT for Vertex AI, or GEMINI_API_KEY)"

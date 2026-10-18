@@ -36,7 +36,7 @@ export function Tasks() {
   }, [employee?.key]);
 
   const header = <PageHeader label="Tasks" title="Everything you handed off."
-    lede="Sandbox runs and your own agents' tasks, in one list. Open one to see its work order, every step, any question waiting for you, and its receipt."
+    lede={selected ? undefined : "Sandbox runs and your own agents' tasks, in one list. Open one to see its work order, every step, any question waiting for you, and its receipt."}
     actions={employee ? <span className="flex flex-wrap items-center gap-2 text-xs md:justify-end"><span className="tag">Signed in · {employee.name}</span><button className="pill pill-sm" onClick={signOutEmployee}>Sign out</button></span> : undefined} />;
   if (!employee) return <div className="space-y-8">{header}<KeyGate /></div>;
 
@@ -56,7 +56,7 @@ export function Tasks() {
   return (
     <div className="space-y-8">
       {header}
-      <div className="grid items-start gap-6 lg:grid-cols-[300px_minmax(0,1fr)]">
+      <div className="grid items-start gap-6 lg:grid-cols-[minmax(260px,300px)_minmax(0,1fr)]">
         <section className={`card overflow-hidden lg:sticky lg:top-6 ${selected ? "order-2 lg:order-none" : ""}`} aria-labelledby="task-list">
           <div className="space-y-3 p-4">
             <div className="flex items-center justify-between gap-2">

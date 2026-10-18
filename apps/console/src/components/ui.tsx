@@ -72,7 +72,7 @@ export function PageHeader({ index, label, title, lede, actions }: {
   index?: string; label: string; title: ReactNode; lede?: ReactNode; actions?: ReactNode;
 }) {
   return (
-    <header className="flex flex-col gap-6 border-b pb-7 md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--rule)" }}>
+    <header className="flex flex-col gap-4 border-b pb-6 md:flex-row md:items-end md:justify-between" style={{ borderColor: "var(--rule)" }}>
       <div>
         <p className="section-label mb-3" data-index={index}>{label}</p>
         <h1 className="h2">{title}</h1>

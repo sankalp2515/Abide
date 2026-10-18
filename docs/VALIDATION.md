@@ -98,3 +98,7 @@ Live on Cloud Run with Cloud SQL PostgreSQL: 14/14 end-to-end checks (Gemini exp
 - Bug found and fixed: after a gateway restart past sandbox tasks were labelled as your agent's (the label came from memory); now from stored data.
 - pytest 213 passed, 5 skipped; ruff clean; Console tsc clean, 8/8; production build ok.
 
+
+## Docker check with the agent team (18 Oct 2026, local)
+
+Plain Docker (no Google credentials): a sandbox task now uses the stand-in agents with a note, instead of failing on missing credentials. The three-agent test team (examples/agent-team) was driven from the browser: the INV-1042 payment and named emails ran; the ₹92,000 payment, the vendor export and the outside email were stopped and traced to the invoice; exactly one question reached Needs you; after approval the email went out. 10/10 checks. Bug fixed: a code-style record (INV-1042) was read two ways (inv-1042 and 1042) and did not match; record ids now have one spelling (test added). pytest 214 passed.
