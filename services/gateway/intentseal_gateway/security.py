@@ -37,6 +37,7 @@ class Principal:
     scope: str
     org: str = "default"
     agents: frozenset[str] | None = None     # None: every agent of the organisation
+    agent: bool = False                       # an agent key: acts for `name`, but can never confirm, change or approve
 
     @property
     def all_orgs(self) -> bool:
@@ -57,6 +58,9 @@ class KeyRing:
         self._keys: dict[str, Principal] = {}
         for item in filter(None, (s.strip() for s in os.environ.get("INTENTSEAL_API_KEYS", "").split(","))):
             parts = item.split(":")
+            if len(parts) == 3 and parts[2] == "agent" and parts[0] and parts[1]:   # "local:local-agent-key:agent"
+                self._keys[_h(parts[1])] = Principal(parts[0], "project", agent=True)
+                continue
             if 3 <= len(parts) <= 5 and parts[2] in SCOPES and parts[0] and parts[1]:
                 org = parts[3].strip() if len(parts) > 3 and parts[3].strip() else "default"
                 agents = _agents(parts[4]) if len(parts) > 4 else None
@@ -67,6 +71,7 @@ class KeyRing:
                                             _agents(os.environ.get("INTENTSEAL_PUBLIC_AGENTS", "").replace(",", "|")))
         self._buckets: dict[str, list[float]] = {}
         self.trial_store = None                  # set by the app when INTENTSEAL_TRIAL_KEYS=1
+        self.agent_store = None                  # set by the app: agent keys issued from the Console (POST /v1/agent-keys)
         self._trial_cache: dict[str, tuple[Principal | None, float]] = {}
         self.limit = int(os.environ.get("INTENTSEAL_RATE_LIMIT_PER_MIN") or "120")
         self.public_limit = int(os.environ.get("INTENTSEAL_PUBLIC_RATE_LIMIT_PER_MIN") or "20")
@@ -87,6 +92,8 @@ class KeyRing:
                 return p
         if self.trial_store is not None and key.startswith(TRIAL_PREFIX):
             return self._trial(h)
+        if self.agent_store is not None and key.startswith(AGENT_PREFIX):
+            return self._agent(h)
         return None
 
     def allow(self, p: Principal, client: str = "") -> bool:
@@ -143,6 +150,53 @@ def issue_trial_key(ring: KeyRing, address: str) -> dict[str, object]:
     store.execute("INSERT INTO trial_keys VALUES (?,?,?,?,?)", (_h(key), name, address, now, expires))
     return {"key": key, "name": name, "scope": "project", "expires": expires,
             "note": "Shown once. Your delegations and businesses are private to this key."}
+
+
+# ---- agent keys: what an agent runtime holds instead of the employee's own key -------------------------------------
+AGENT_PREFIX = "isk_agent_"
+AGENT_DAYS = 30
+AGENT_PER_OWNER = 20
+AGENT_SCHEMA = ["""CREATE TABLE IF NOT EXISTS agent_keys (hash TEXT PRIMARY KEY, id TEXT, owner TEXT, label TEXT,
+                   created REAL, expires REAL, revoked REAL)"""]
+
+
+def _agent(self: KeyRing, h: str) -> Principal | None:
+    hit = self._trial_cache.get("a:" + h)
+    if hit and time.time() - hit[1] < 30:
+        return hit[0]
+    rows = self.agent_store.query("SELECT owner, expires, revoked FROM agent_keys WHERE hash = ?", (h,))
+    ok = rows and rows[0]["expires"] > time.time() and not rows[0]["revoked"]
+    p = Principal(rows[0]["owner"], "project", agent=True) if ok else None
+    self._trial_cache["a:" + h] = (p, time.time())
+    return p
+
+
+KeyRing._agent = _agent      # type: ignore[attr-defined]
+
+
+def issue_agent_key(ring: KeyRing, owner: Principal, label: str) -> dict[str, object]:
+    """A key for one agent runtime, acting for `owner`: it may start tasks, have its tool calls checked, report what
+    ran and read the receipt, but it can never confirm or widen a work order, approve its own questions, register a
+    business or issue keys. Shown once; only its hash is stored."""
+    store = ring.agent_store
+    if store is None or owner.agent or owner.scope not in ("project", "admin"):
+        raise HTTPException(403, "only a person's own key can issue agent keys")
+    if len(store.query("SELECT id FROM agent_keys WHERE owner = ? AND revoked IS NULL", (owner.name,))) >= AGENT_PER_OWNER:
+        raise HTTPException(429, "too many agent keys; revoke one first")
+    key = AGENT_PREFIX + secrets.token_urlsafe(24)
+    now = time.time()
+    kid = "ak-" + secrets.token_hex(4)
+    store.execute("INSERT INTO agent_keys VALUES (?,?,?,?,?,?,?)",
+                  (_h(key), kid, owner.name, (label or "my agent")[:60], now, now + AGENT_DAYS * 86400, None))
+    return {"key": key, "id": kid, "owner": owner.name, "label": (label or "my agent")[:60],
+            "expires": now + AGENT_DAYS * 86400,
+            "note": "Shown once. Give it to your agent. It can act inside your work orders, never approve them."}
+
+
+def human_only(p: Principal) -> None:
+    """Confirming, widening, approving, registering a business and issuing keys are for people, not agent keys."""
+    if p.agent:
+        raise HTTPException(403, "an agent key cannot do this; the person who delegated the task must")
 
 
 def _key_from(request: Request) -> str | None:

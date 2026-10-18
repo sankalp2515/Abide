@@ -6,7 +6,8 @@ Rules (docs/DESIGN_NOTES.md):
   - A permit that names recipients covers exactly those recipients. A governed action (send, share, ...) with no
     named recipient may reach only addresses inside the organisation.
   - Resources: anything named anywhere in the request may be used. A confidential or unknown resource that was never
-    named is out of scope for every action, including reading it.
+    named is out of scope for every action, including reading it. So is a record (an order, an invoice, a patient)
+    the request did not name: another customer's record is not read just because a document mentions it.
   - A governed action with no permit is out of scope. Drafting and reading need no permit (they stay inside).
 """
 
@@ -84,7 +85,8 @@ def rule(contract: DelegationContract, call: ToolCall, policy: DelegatePolicy) -
         if res in named_resources:
             continue
         # Anything that leaves or cannot be undone (send, pay, delete, ...) may use only what the employee named.
-        if res.startswith("unknown:") or policy.is_confidential(res) or act in GOVERNED:
+        is_record = any(res.startswith(f"{rt.type}:") for rt in policy.records)
+        if res.startswith("unknown:") or policy.is_confidential(res) or act in GOVERNED or is_record:
             offending.setdefault("resource", []).append(res)
 
     limits = [float(c.values["amount"][0]) for c in permits if c.values.get("amount")]

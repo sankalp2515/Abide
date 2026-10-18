@@ -43,6 +43,7 @@ function set(e: Employee | null) {
 
 export async function signInEmployee(key: string): Promise<Employee> {
   const who = await api.whoami(key.trim());
+  if (who.agent_key) throw new Error("That is an agent key. Sign in with your own key; agent keys are for your agents.");
   if (who.scope !== "project" && who.scope !== "admin") throw new Error("This key cannot act for an employee.");
   const e = { key: key.trim(), name: who.name };
   set(e);

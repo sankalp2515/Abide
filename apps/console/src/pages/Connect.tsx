@@ -19,7 +19,7 @@ function YourKey({ apiKey, name }: { apiKey: string; name: string }) {
     <section className="card settle flex flex-col gap-4 p-6 md:flex-row md:items-center md:justify-between" aria-labelledby="key-title">
       <div className="space-y-2">
         <span className="section-label">Your key · {name}</span>
-        <h2 id="key-title" className="h3">The same key for this browser and your agent</h2>
+        <h2 id="key-title" className="h3">Your own key: for you, not for your agents</h2>
         <p className="mono m-0 break-all text-[13px]">{shown ? apiKey : `${apiKey.slice(0, 10)}${"•".repeat(12)}${apiKey.slice(-4)}`}</p>
         <label className="flex cursor-pointer items-center gap-2 text-[14px]">
           <input type="checkbox" className="h-4 w-4" style={{ accentColor: "var(--accent)" }} checked={remember} onChange={(e) => { setRem(e.target.checked); setRemember(e.target.checked); }} />
@@ -32,6 +32,80 @@ function YourKey({ apiKey, name }: { apiKey: string; name: string }) {
         <button className="pill pill-sm" onClick={signOutEmployee}>Sign out</button>
       </div>
     </section>
+  );
+}
+
+/** Keys for agents: they act inside your work orders and can never confirm, widen or approve them. */
+function AgentKeys({ apiKey }: { apiKey: string }) {
+  const [list, setList] = useState<{ id: string; label: string; created: number; expires: number; active: boolean }[] | null>(null);
+  const [label, setLabel] = useState("my agent");
+  const [fresh, setFresh] = useState<{ key: string; label: string } | null>(null);
+  const [copied, setCopied] = useState(false);
+  const [error, setError] = useState<string | null>(null);
+  const load = () => tasks.agentKeys(apiKey).then(setList).catch((e) => setError((e as Error).message));
+  useEffect(() => { load(); /* eslint-disable-next-line react-hooks/exhaustive-deps */ }, [apiKey]);
+  return (
+    <section id="agent-keys" className="card settle space-y-4 p-6" aria-labelledby="ak-title">
+      <div className="flex flex-wrap items-end justify-between gap-3">
+        <div><span className="section-label">Agent keys</span><h2 id="ak-title" className="h3 mt-1">Give each agent its own key</h2>
+          <p className="muted m-0 mt-1 max-w-[62ch] text-[14px]">An agent key can start tasks for you, have its tool calls checked and read the receipt. It can never confirm or change a work order, approve its own questions, change your business or make keys. Only you can.</p></div>
+      </div>
+      <form className="flex flex-col gap-2 sm:flex-row" onSubmit={async (e) => {
+        e.preventDefault(); setError(null);
+        try { const k = await tasks.newAgentKey(apiKey, label.trim() || "my agent"); setFresh({ key: k.key, label: k.label }); setCopied(false); load(); }
+        catch (err) { setError((err as Error).message); }
+      }}>
+        <label className="sr-only" htmlFor="ak-label">Agent name</label>
+        <input id="ak-label" className="input flex-1" maxLength={60} value={label} onChange={(e) => setLabel(e.target.value)} placeholder="Which agent is it for?" />
+        <button className="pill pill-primary">Make an agent key</button>
+      </form>
+      {fresh && (
+        <div className="settle space-y-2 rounded-md p-4" style={{ background: "var(--accent-wash)", border: "1.5px solid var(--accent)" }} role="status">
+          <p className="m-0 text-[14px]"><b>{fresh.label}</b>: copy it now; it is shown once.</p>
+          <div className="flex flex-col gap-2 sm:flex-row sm:items-center">
+            <code className="mono flex-1 break-all rounded px-2 py-1.5 text-[13px]" style={{ background: "var(--surface)" }}>{fresh.key}</code>
+            <button className="pill pill-sm" onClick={async () => { try { await navigator.clipboard.writeText(fresh.key); setCopied(true); } catch { /* select by hand */ } }}>{copied ? "Copied" : "Copy"}</button>
+          </div>
+        </div>
+      )}
+      {error && <ErrorNote>{error}</ErrorNote>}
+      {list && list.length > 0 && (
+        <ul className="m-0 list-none divide-y p-0" style={{ borderColor: "var(--line)" }}>
+          {list.map((k) => (
+            <li key={k.id} className="flex flex-wrap items-center justify-between gap-2 py-2.5 text-[14px]" style={{ borderTop: "1px solid var(--line)" }}>
+              <span><b className="font-semibold">{k.label}</b> <span className="mono subtle text-[12px]">{k.id} · made {ago(k.created)}</span></span>
+              {k.active ? <button className="pill pill-sm pill-danger" onClick={async () => { await tasks.revokeAgentKey(apiKey, k.id); load(); }}>Revoke</button> : <Stamp kind="quiet">Revoked</Stamp>}
+            </li>
+          ))}
+        </ul>
+      )}
+    </section>
+  );
+}
+
+function AddBusiness({ apiKey, onAdded }: { apiKey: string; onAdded: (id: string) => void }) {
+  const [id, setId] = useState("");
+  const [json, setJson] = useState("");
+  const [msg, setMsg] = useState<{ ok: boolean; text: string } | null>(null);
+  return (
+    <details className="card p-5">
+      <summary className="cursor-pointer text-[15px] font-semibold">Add your business <span className="subtle font-normal">· paste its definition (tools, people, files, records); a person does this once</span></summary>
+      <form className="mt-4 space-y-3" onSubmit={async (e) => {
+        e.preventDefault(); setMsg(null);
+        try {
+          const policy = JSON.parse(json);
+          await tasks.registerBusiness(apiKey, id.trim(), policy);
+          setMsg({ ok: true, text: `Added ${id.trim()}. Your agents can now start tasks for it.` }); onAdded(id.trim());
+        } catch (err) { setMsg({ ok: false, text: err instanceof SyntaxError ? "That is not valid JSON." : (err as Error).message }); }
+      }}>
+        <label className="flex flex-col gap-1"><span className="section-label">Business id</span>
+          <input id="biz-id" className="input mono" required pattern="[a-z0-9][a-z0-9-]{2,40}" placeholder="northwind-books" value={id} onChange={(e) => setId(e.target.value)} /></label>
+        <label className="flex flex-col gap-1"><span className="section-label">Definition (JSON)</span>
+          <textarea id="biz-json" className="input mono min-h-[160px] text-[12.5px]" required placeholder='{"tools": {"send_email": {"action": "send", "recipient_args": ["to"]}}, "contacts": [...]}' value={json} onChange={(e) => setJson(e.target.value)} /></label>
+        <button className="pill pill-primary">Add business</button>
+        {msg && (msg.ok ? <p className="m-0 text-[14px]" style={{ color: "var(--allow)" }}>{msg.text}</p> : <ErrorNote>{msg.text}</ErrorNote>)}
+      </form>
+    </details>
   );
 }
 
@@ -95,12 +169,13 @@ function Business({ apiKey }: { apiKey: string }) {
   const [list, setList] = useState<{ id: string; builtin: boolean; business?: string; description?: string }[] | null>(null);
   const [open, setOpen] = useState<string | null>(null);
   const [detail, setDetail] = useState<DBusiness | null>(null);
-  useEffect(() => { tasks.businesses(apiKey).then((l) => { setList(l); setOpen((o) => o ?? l[0]?.id ?? null); }).catch(() => setList([])); }, [apiKey]);
+  const [added, setAdded] = useState(0);
+  useEffect(() => { tasks.businesses(apiKey).then((l) => { setList(l); setOpen((o) => o ?? l[0]?.id ?? null); }).catch(() => setList([])); }, [apiKey, added]);
   useEffect(() => { if (open) tasks.business(apiKey, open).then((b) => setDetail(b.policy)).catch(() => setDetail(null)); }, [open, apiKey]);
   return (
     <section className="space-y-4" aria-labelledby="biz-title">
       <div><span className="section-label">Your business</span><h2 id="biz-title" className="h3 mt-1">What your agents can touch</h2>
-        <p className="muted m-0 mt-1 text-[14px]">Tools, the people they may contact, files and records. Anything not here stays off, whatever a document says. Register your own with <span className="mono">client.register_workspace(…)</span>.</p></div>
+        <p className="muted m-0 mt-1 text-[14px]">Tools, the people they may contact, files and records. Anything not here stays off, whatever a document says. Add your own below.</p></div>
       <div className="flex flex-wrap gap-2" role="radiogroup" aria-label="Business">
         {(list ?? []).map((b) => <button key={b.id} role="radio" aria-checked={open === b.id} className={`pill pill-sm ${open === b.id ? "pill-primary" : ""}`} onClick={() => setOpen(b.id)}>{b.business ?? b.id}{b.builtin ? " · sandbox" : ""}</button>)}
       </div>
@@ -116,6 +191,7 @@ function Business({ apiKey }: { apiKey: string }) {
             {detail.records.map((r) => <li key={r.type} className="subtle text-[13px]">{r.type} records · {r.data_class ?? "internal"}</li>)}</ul></div>
         </div>
       )}
+      <AddBusiness apiKey={apiKey} onAdded={(bid) => { setAdded((n) => n + 1); setOpen(bid); }} />
     </section>
   );
 }
@@ -130,6 +206,7 @@ export function Connect() {
       {header}
       <YourKey apiKey={employee.key} name={employee.name} />
       <ConnectAgent apiKey={employee.key} />
+      <AgentKeys apiKey={employee.key} />
       <ConnectedAgents apiKey={employee.key} />
       <Business apiKey={employee.key} />
       <details className="card p-5">

@@ -60,6 +60,14 @@ NOTICE_ASK = ("Waiting: the employee must confirm this exact action ({approval})
               "change the action, or a new confirmation is needed.")
 
 
+def _seq(receipt: str) -> int:
+    """R-12 -> 12: receipts are numbered in the order things happened."""
+    try:
+        return int(str(receipt).rsplit("-", 1)[-1])
+    except ValueError:
+        return 10 ** 9
+
+
 class DelegateError(ValueError):
     pass
 
@@ -407,17 +415,21 @@ class DelegateService:
     # ---- ⑦ gate + ⑧ approvals ---------------------------------------------------------------------------------------
     def _traced(self, workflow_id: str, call: ToolCall, ruling: Ruling) -> str | None:
         """Where an out-of-scope call came from, if it came from content an agent read: argument text copied from
-        it, or an offending value (an address, a file) that appears in it but not in the employee's words."""
-        hits = self._tracker(workflow_id).trace(call.args)
-        if hits:
-            return hits[0].source
+        it, or an offending value (an address, a file, an amount) that appears in it but not in the employee's words.
+        When several things an agent read match (the photo that asked for "order #9921, Rs. 48,000", then the order
+        lookup that returned 48000), the instruction came from the earliest: that document is named."""
+        rows = self.store.query("SELECT receipt, source, text FROM delegate_content WHERE workflow_id = ?", (workflow_id,))
+        seq = {r["receipt"]: _seq(r["receipt"]) for r in rows}
+        found: dict[str, str] = {}                       # receipt -> source, every match
+
+        for h in self._tracker(workflow_id).trace(call.args):
+            found[h.origin] = h.source
         request = norm(split_material(self.contract(workflow_id).request)[0])
-        rows = self.store.query("SELECT source, text FROM delegate_content WHERE workflow_id = ?", (workflow_id,))
         for amt in ruling.offending.get("amount", []):     # "refund 50,000": the number came from what they read
             for row in rows:
                 numbers = {f"{n:g}" for n in (to_number(m.group()) for m in _NUM.finditer(row["text"])) if n is not None}
                 if amt in numbers and amt not in request.replace(",", ""):
-                    return row["source"]
+                    found[row["receipt"]] = row["source"]
         # By identity, not spelling: "order #9921" in a ticket and order_id "9921" in a call are the same record.
         asked = self.policy.mentions(split_material(self.contract(workflow_id).request)[0])
         for row in rows:
@@ -425,21 +437,25 @@ class DelegateService:
             for fld in ("recipient", "resource"):
                 named = {v for _, v in seen[fld]} - {v for _, v in asked[fld]}
                 if any(v in named for v in ruling.offending.get(fld, [])):
-                    return row["source"]
-        for fld, values in ruling.offending.items():
-            if fld == "amount":
-                continue
-            for v in values:
-                needle = norm(v.removeprefix("unknown:"))
-                candidates = {needle}
-                r = self.policy.resource(needle)
-                if r:
-                    candidates |= {norm(r.name), *(norm(a) for a in r.aliases)}
-                for row in rows:
-                    text = norm(row["text"])
-                    if any(c and c in text and c not in request for c in candidates):
-                        return row["source"]
-        return None
+                    found[row["receipt"]] = row["source"]
+        if not found:
+            for fld, values in ruling.offending.items():
+                if fld == "amount":
+                    continue
+                for v in values:
+                    needle = norm(v.removeprefix("unknown:"))
+                    candidates = {needle}
+                    r = self.policy.resource(needle)
+                    if r:
+                        candidates |= {norm(r.name), *(norm(a) for a in r.aliases)}
+                    for row in rows:
+                        text = norm(row["text"])
+                        if any(c and c in text and c not in request for c in candidates):
+                            found[row["receipt"]] = row["source"]
+        if not found:
+            return None
+        first = min(found, key=lambda rid: seq.get(rid, _seq(rid)))
+        return found[first]
 
     def _confidential_leak(self, workflow_id: str, call: ToolCall, ruling: Ruling) -> str | None:
         """D-D10: text from a confidential file going to someone outside the company, when the employee did not name

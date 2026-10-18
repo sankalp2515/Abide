@@ -287,7 +287,7 @@ export const api = {
   metrics: (hours = 24) => call<Metrics>(`/v1/metrics?hours=${hours}`),
   insights: (days = 30) => call<Insights>(`/v1/insights?days=${days}`),
   costs: (days = 7) => call<Costs>(`/v1/costs?days=${days}`),
-  whoami: (key: string) => call<{ name: string; scope: string }>("/v1/whoami", undefined, key),
+  whoami: (key: string) => call<{ name: string; scope: string; agent_key?: boolean }>("/v1/whoami", undefined, key),
   /** A private 7-day key for this visitor, when the deployment allows it (no sign-up). */
   trialKey: () => call<{ key: string; name: string; expires: number }>("/v1/trial-keys", { method: "POST" }, ""),
   agents: () => call<AgentSummary[]>("/v1/agents"),
@@ -375,6 +375,11 @@ export const tasks = {
     call<{ status: string }>(`${wfPath(wf)}/approvals/${encodeURIComponent(approval)}`, { method: "POST", body: JSON.stringify({ approve }) }, key),
   report: (key: string, wf: string) => call<DReport>(`${wfPath(wf)}/report`, undefined, key),
   agents: (key: string) => call<DAgent[]>("/v1/my-agents", undefined, key),
+  agentKeys: (key: string) => call<{ id: string; label: string; created: number; expires: number; active: boolean }[]>("/v1/agent-keys", undefined, key),
+  newAgentKey: (key: string, label: string) => call<{ key: string; id: string; label: string; expires: number }>("/v1/agent-keys", { method: "POST", body: JSON.stringify({ label }) }, key),
+  revokeAgentKey: (key: string, id: string) => call<{ revoked: boolean }>(`/v1/agent-keys/${encodeURIComponent(id)}`, { method: "DELETE" }, key),
+  registerBusiness: (key: string, id: string, policy: unknown, description = "") =>
+    call<{ id: string }>("/v1/delegate-workspaces", { method: "POST", body: JSON.stringify({ id, policy, description }) }, key),
   businesses: (key: string) => call<{ id: string; builtin: boolean; business?: string; description?: string }[]>("/v1/delegate-workspaces", undefined, key),
   business: (key: string, id: string) => call<{ id: string; builtin: boolean; policy: DBusiness }>(`/v1/delegate-workspaces/${encodeURIComponent(id)}`, undefined, key),
 };

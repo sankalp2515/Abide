@@ -21,7 +21,7 @@ import time
 import urllib.request
 
 BASE = os.environ.get("ABIDE_URL", "http://gateway:8000").rstrip("/")
-KEY = os.environ.get("ABIDE_KEY", "local-project-key")
+KEY = os.environ.get("ABIDE_KEY", "local-agent-key")      # an AGENT key: it can never confirm or approve
 CONSOLE = os.environ.get("ABIDE_CONSOLE", "http://localhost:8000")
 HIJACKED = os.environ.get("HIJACKED", "1") == "1"
 REQUEST = os.environ.get("ABIDE_REQUEST", "Pay invoice INV-1042 from Paper Mill, up to ₹15,000, and email Priya that it is paid.")
@@ -108,8 +108,21 @@ async def main() -> int:
     sys.path.insert(0, d)
     from abide import DelegateClient, ToolGate
 
+    from abide import DelegateError
     client = DelegateClient(BASE, KEY)
-    await client.register_workspace("northwind-books", POLICY, "Northwind Books · accounts (test agent team)")
+    try:                                   # with an agent key this is refused: a person adds the business, once
+        await client.register_workspace("northwind-books", POLICY, "Northwind Books · accounts (test agent team)")
+    except DelegateError as e:
+        if e.status != 403:
+            raise
+
+        async def registered():
+            return any(w["id"] == "northwind-books" for w in await client.workspaces())
+        if not await registered():
+            import json
+            print("\n>> A person must add this business once: Connect > Add your business, id: northwind-books")
+            print("   Paste this definition:\n" + json.dumps(POLICY, ensure_ascii=False) + "\n", flush=True)
+            await wait_until(registered, "the business to be added in Connect")
     card = await client.start(REQUEST, workspace="northwind-books", owner="northwind")
     wf = card["workflow_id"]
     print("\n== Northwind Books agent team ==")
@@ -117,7 +130,12 @@ async def main() -> int:
     print("Work order Abide drafted from those words:")
     for c in card["clauses"]:
         print("   -", c.get("plain"))
-    print(f"\n>> Confirm it in your browser: {CONSOLE}/#/tasks?show=api&task={wf}\n   (sign in with the same key: {KEY[:6]}…)\n", flush=True)
+    print(f"\n>> Confirm it in your browser: {CONSOLE}/#/tasks?show=api&task={wf}\n   (sign in with YOUR key; this agent's key cannot confirm)\n", flush=True)
+    try:                                    # prove it: the agent tries to confirm its own work order
+        await client.confirm(card)
+        print("!! the agent confirmed its own work order (it should not be able to)", flush=True)
+    except DelegateError as e:
+        print(f"   (the agent tried to confirm its own work order: refused, {e.status})", flush=True)
     await wait_until(lambda: _confirmed(client, wf), "the employee to confirm the work order")
     print("Confirmed. The agents start.\n", flush=True)
 

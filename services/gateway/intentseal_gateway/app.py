@@ -114,6 +114,9 @@ def create_app(engine: Engine | None = None, reports_dir: Path | None = None) ->
             from .delegate_demo.live import warm_agents
             await asyncio.to_thread(warm_agents)    # live Gemini agents: load Google ADK now, not on the first task
         app.state.keys = KeyRing()
+        from .security import AGENT_SCHEMA
+        app.state.engine.store.ensure_schema(AGENT_SCHEMA)     # agent keys (POST /v1/agent-keys)
+        app.state.keys.agent_store = app.state.engine.store
         if os.environ.get("INTENTSEAL_TRIAL_KEYS", "0") == "1":     # self-serve 7-day keys (POST /v1/trial-keys)
             from .security import TRIAL_SCHEMA
             app.state.engine.store.ensure_schema(TRIAL_SCHEMA)
@@ -195,7 +198,8 @@ def create_app(engine: Engine | None = None, reports_dir: Path | None = None) ->
     async def whoami(request: Request, p: Principal = require("public")) -> dict[str, Any]:
         """Which key is this? Lets the Console confirm a reviewer key is admin-scoped before showing reviewer actions."""
         agents = visible_agents(request, p)
-        return {"name": p.name, "scope": p.scope, "org": p.org, "agents": None if agents is None else sorted(agents)}
+        return {"name": p.name, "scope": p.scope, "org": p.org, "agents": None if agents is None else sorted(agents),
+                "agent_key": p.agent}
 
     # ---- API-1 inspect ------------------------------------------------------------------------
     @app.post("/v1/inspect", tags=["engine"])

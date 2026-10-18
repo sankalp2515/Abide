@@ -44,7 +44,7 @@ services:
     environment:
       PORT: "8000"
       INTENTSEAL_DATABASE_URL: postgresql://intentseal:${POSTGRES_PASSWORD:-intentseal-local-only}@postgres:5432/intentseal
-      INTENTSEAL_API_KEYS: ${INTENTSEAL_API_KEYS:-local:local-project-key:project,localadmin:local-admin-key:admin}
+      INTENTSEAL_API_KEYS: ${INTENTSEAL_API_KEYS:-local:local-project-key:project,localadmin:local-admin-key:admin,local:local-agent-key:agent}
       INTENTSEAL_PUBLIC_KEY: *public-key
       INTENTSEAL_DELEGATE_SECRET: ${INTENTSEAL_DELEGATE_SECRET:-local-only-seal-key-change-me}
       INTENTSEAL_INVESTIGATOR_AUTO: "0"
@@ -74,7 +74,7 @@ services:
       gateway: { condition: service_healthy }
     environment:
       ABIDE_URL: http://gateway:8000
-      ABIDE_KEY: ${ABIDE_AGENT_KEY:-local-project-key}
+      ABIDE_KEY: ${ABIDE_AGENT_KEY:-local-agent-key}     # an agent key for "local": acts, never approves
       ABIDE_CONSOLE: http://localhost:8000
       HIJACKED: ${HIJACKED:-1}
     mem_limit: 256m

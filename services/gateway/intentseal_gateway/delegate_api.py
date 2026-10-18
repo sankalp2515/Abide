@@ -30,7 +30,7 @@ from intentseal_core.delegate.explain import ModelExplainer
 from intentseal_core.delegate.receipts import ModelWriter
 from intentseal_core.delegate.service import DelegateError, DelegateForbidden, DelegateService
 
-from .security import Principal, require
+from .security import Principal, human_only, issue_agent_key, require
 
 log = logging.getLogger("intentseal.delegate")
 router = APIRouter(tags=["delegate"])
@@ -211,6 +211,7 @@ def _may_use(request: Request, workspace: str, p: Principal) -> None:
 async def register_workspace(body: WorkspaceRequest, request: Request,
                              p: Principal = require("project")) -> dict[str, Any]:
     """Register (or replace) your business: tools and their fields, contacts, files, records and company rules."""
+    human_only(p)                      # an agent could otherwise add its own contacts and widen what it may do
     from intentseal_core.delegate.model import custom_delegate_policy
     if body.id in _reserved(request):
         raise HTTPException(409, "that id belongs to a built-in sandbox")
@@ -263,6 +264,36 @@ async def list_workspaces(request: Request, p: Principal = require("project")) -
     return out + [{"id": r["id"], "builtin": False, "description": r["description"]} for r in rows]
 
 
+class AgentKeyRequest(BaseModel):
+    label: str = Field("my agent", max_length=60)
+
+
+@router.post("/v1/agent-keys", status_code=201)
+async def new_agent_key(body: AgentKeyRequest, request: Request, p: Principal = require("project")) -> dict[str, Any]:
+    """A key for your agent: it acts inside your work orders and can never confirm, widen or approve them."""
+    return issue_agent_key(request.app.state.keys, p, body.label)
+
+
+@router.get("/v1/agent-keys")
+async def list_agent_keys(request: Request, p: Principal = require("project")) -> list[dict[str, Any]]:
+    human_only(p)
+    rows = request.app.state.keys.agent_store.query(
+        "SELECT id, label, created, expires, revoked FROM agent_keys WHERE owner = ? ORDER BY created DESC", (p.name,))
+    return [dict(r, active=not r["revoked"] and r["expires"] > time.time()) for r in rows]
+
+
+@router.delete("/v1/agent-keys/{kid}")
+async def revoke_agent_key(kid: str, request: Request, p: Principal = require("project")) -> dict[str, Any]:
+    human_only(p)
+    ring = request.app.state.keys
+    rows = ring.agent_store.query("SELECT id FROM agent_keys WHERE id = ? AND owner = ?", (kid, p.name))
+    if not rows:
+        raise HTTPException(404, "no such agent key")
+    ring.agent_store.execute("UPDATE agent_keys SET revoked = ? WHERE id = ?", (time.time(), kid))
+    ring._trial_cache.clear()                       # the key stops working now, not in 30 seconds
+    return {"id": kid, "revoked": True}
+
+
 @router.get("/v1/my-agents")
 async def my_agents(request: Request, p: Principal = require("project")) -> list[dict[str, Any]]:
     """The agents that acted under your work orders, from the receipts: how often each was checked, what was allowed,
@@ -296,7 +327,10 @@ async def get_workspace(wid: str, request: Request, p: Principal = require("proj
 
 
 def actor(request: Request, wf: str, p: Principal) -> str:
-    """Who is speaking: the key's own name. An admin key may act for the employee who delegated the task."""
+    """Who is speaking: the key's own name. An admin key may act for the employee who delegated the task. An agent
+    key speaks as the agent, never as its owner, so the service refuses it anything only the employee may do."""
+    if p.agent:
+        return f"agent:{p.name}"
     return service(request, wf).owner_of(wf) if p.scope == "admin" else p.name
 
 
@@ -485,6 +519,7 @@ async def _demo_state(request: Request, wf: str) -> dict[str, Any]:
 @router.post("/v1/delegate-demo")
 async def demo_start(body: DemoStart, request: Request, p: Principal = require("project")) -> dict[str, Any]:
     demo_enabled()
+    human_only(p)
     from .delegate_demo.live import EMPLOYEE, POLICY_FILE, LiveDemo
     from .delegate_demo.live import REQUESTS
     svc = service(request, workspace=POLICY_FILE[body.domain])

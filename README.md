@@ -88,8 +88,13 @@ words. The Accountant is hijacked on purpose; it obeys an instruction hidden in 
 docker compose --profile agents run --rm agents
 ```
 
-The team prints a link. Confirm its work order in **Tasks → Your agents**, then answer its one question in **Needs
-you**. Expected result:
+The team runs on an **agent key**: `local-agent-key` locally; on the live site, make one in **Connect → Agent keys** and
+pass `ABIDE_AGENT_KEY=…`.
+
+1. The team tries to confirm its own work order, and is refused.
+2. If its business is not added yet, it prints the definition. Add it once in **Connect → Add your business**.
+3. Confirm its work order in **Tasks → Your agents**, signed in with your own key.
+4. Answer its one question in **Needs you**. Expected result:
 
 - **Runs:** the ₹12,400 payment of INV-1042, the email to Priya, and (after you approve it) the email to the finance
   team.
