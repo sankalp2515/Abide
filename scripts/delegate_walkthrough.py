@@ -14,7 +14,8 @@ from pathlib import Path
 from playwright.sync_api import Page, expect, sync_playwright
 
 BASE = os.environ.get("INTENTSEAL_CONSOLE_URL", "http://127.0.0.1:8000").rstrip("/") + "/#"
-OUT = Path(__file__).resolve().parents[1] / "docs" / "walkthrough"
+OUT = Path(os.environ.get("INTENTSEAL_WALKTHROUGH_OUT") or Path(__file__).resolve().parents[1] / "docs" / "walkthrough")
+KEY = os.environ.get("INTENTSEAL_WALKTHROUGH_KEY", "local-project-key")    # a project key on the target deployment
 SLOW = 90_000          # the drafter may wait for Gemini before falling back to the word rules
 
 
@@ -66,7 +67,7 @@ def main() -> None:
         page.get_by_role("button", name="Continue").click()
         expect(page.get_by_role("alert")).to_be_visible()
         shot(page, "03-sign-in-wrong-key")
-        page.get_by_placeholder("Project key").fill("local-project-key")
+        page.get_by_placeholder("Project key").fill(KEY)
         page.get_by_role("button", name="Continue").click()
         expect(page.get_by_role("button", name="Prepare my assistants")).to_be_visible()
         shot(page, "04-start-office")
@@ -123,7 +124,7 @@ def main() -> None:
         # Phone width
         phone = browser.new_page(viewport={"width": 390, "height": 844}, is_mobile=True)
         phone.goto(f"{BASE}/delegate")
-        phone.evaluate("sessionStorage.setItem('abide.employee', JSON.stringify({key: 'local-project-key', name: 'local'}))")
+        phone.evaluate("k => sessionStorage.setItem('abide.employee', JSON.stringify({key: k, name: 'employee'}))", KEY)
         phone.reload()
         expect(phone.get_by_role("button", name="Prepare my assistants")).to_be_visible()
         shot(phone, "18-phone-start")
