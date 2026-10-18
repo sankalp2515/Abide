@@ -1,6 +1,6 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
-import { Link, NavLink, useLocation } from "react-router-dom";
-import { api, PRODUCT_NAME } from "../api";
+import { Link, useLocation } from "react-router-dom";
+import { api, PRODUCT_NAME, tasks } from "../api";
 import { useEmployee } from "../employee";
 import { useReviewer } from "../reviewer";
 import { ReviewerSignIn } from "./ReviewerSignIn";
@@ -86,17 +86,33 @@ function ThemeToggle({ dark, toggle }: { dark: boolean; toggle: () => void }) {
 
 const ICON: Record<string, ReactNode> = {
   tasks: <><rect x="4" y="3" width="16" height="18" rx="1.5" /><path d="M8 8h8M8 12h8M8 16h5" /></>,
+  inbox: <><path d="M4 13l2.5-8h11L20 13v6H4z" /><path d="M4 13h5l1 2h4l1-2h5" /></>,
   activity: <path d="M4 18l5-6 4 3 7-9" />,
-  agents: <path d="M9 7H6a4 4 0 000 8h3M15 7h3a4 4 0 010 8h-3M8 11h8" />,
-  business: <path d="M4 20V9l8-5 8 5v11M9 20v-6h6v6" />,
+  connect: <path d="M9 7H6a4 4 0 000 8h3M15 7h3a4 4 0 010 8h-3M8 11h8" />,
 };
 
-const NAV: { label: string; icon: string; to: string; children?: { to: string; label: string }[] }[] = [
-  { label: "Tasks", icon: "tasks", to: "/delegate", children: [{ to: "/delegate", label: "Run a task" }, { to: "/agents", label: "Your agents" }] },
-  { label: "Activity", icon: "activity", to: "/decisions", children: [{ to: "/decisions", label: "Decisions" }, { to: "/replay", label: "Replay" }, { to: "/review", label: "Review" }] },
-  { label: "Agents and tools", icon: "agents", to: "/setup" },
-  { label: "Your business", icon: "business", to: "/policy" },
+/** Four places, one idea each (docs/DESIGN.md). Old addresses still open their pages. */
+const NAV: { label: string; icon: string; to: string; match: string[] }[] = [
+  { label: "Tasks", icon: "tasks", to: "/tasks", match: ["/tasks", "/delegate", "/agents"] },
+  { label: "Needs you", icon: "inbox", to: "/inbox", match: ["/inbox", "/review"] },
+  { label: "Activity", icon: "activity", to: "/activity", match: ["/activity", "/decisions", "/replay"] },
+  { label: "Connect", icon: "connect", to: "/connect", match: ["/connect", "/setup", "/policy"] },
 ];
+
+/** How many questions wait for the signed-in employee, across every task (the sidebar badge). */
+function useWaiting(): number {
+  const employee = useEmployee();
+  const [n, setN] = useState(0);
+  useEffect(() => {
+    if (!employee) { setN(0); return; }
+    let alive = true;
+    const load = () => tasks.list(employee.key).then((r) => { if (alive) setN(r.reduce((s, t) => s + t.waiting, 0)); }).catch(() => undefined);
+    load();
+    const timer = setInterval(() => { if (!document.hidden) load(); }, 6000);
+    return () => { alive = false; clearInterval(timer); };
+  }, [employee?.key]);
+  return n;
+}
 
 function KeyChip() {
   const employee = useEmployee();
@@ -117,6 +133,7 @@ function KeyChip() {
 function Sidebar({ status, theme }: { status: Status; theme: ReturnType<typeof useTheme> }) {
   const reviewer = useReviewer();
   const { pathname } = useLocation();
+  const waiting = useWaiting();
   return (
     <aside className="lg:sticky lg:top-0 lg:h-screen lg:w-[256px] lg:shrink-0 lg:overflow-y-auto" style={{ background: "var(--bg-2)", borderRight: "1px solid var(--line)" }}>
       <div className="flex items-center justify-between gap-3 px-4 py-4 lg:px-5 lg:py-5">
@@ -126,16 +143,12 @@ function Sidebar({ status, theme }: { status: Status; theme: ReturnType<typeof u
       <div className="hidden px-4 pb-3 lg:block"><Link to="/delegate" className="pill pill-primary w-full">New task</Link></div>
       <nav aria-label="App" className="no-scrollbar flex gap-1 overflow-x-auto px-3 pb-3 lg:flex-col lg:overflow-visible lg:pb-0">
         {NAV.map((n) => {
-          const inGroup = n.children ? n.children.some((c) => pathname === c.to) : pathname === n.to;
+          const active = n.match.includes(pathname);
           return (
-            <div key={n.label} className="flex shrink-0 gap-1 lg:flex-col">
-              <NavLink to={n.to} end className={() => `nav-link ${inGroup && !n.children ? "active" : ""}`} aria-current={inGroup && !n.children ? "page" : undefined}>
-                <svg viewBox="0 0 24 24" aria-hidden>{ICON[n.icon]}</svg>{n.label}
-              </NavLink>
-              {n.children && <div className="flex gap-1 lg:flex-col">
-                {n.children.map((c) => <NavLink key={c.to} to={c.to} end className={({ isActive }) => `nav-link nav-sub ${isActive ? "active" : ""}`}>{c.label}</NavLink>)}
-              </div>}
-            </div>
+            <Link key={n.to} to={n.to} className={`nav-link shrink-0 ${active ? "active" : ""}`} aria-current={active ? "page" : undefined}>
+              <svg viewBox="0 0 24 24" aria-hidden>{ICON[n.icon]}</svg>{n.label}
+              {n.to === "/inbox" && waiting > 0 && <span key={waiting} className="press ml-auto rounded-sm px-1.5 py-0.5 font-mono text-[11px]" style={{ background: "var(--neutralise)", color: "var(--on-accent)", ["--r" as string]: "0deg" }} aria-label={`${waiting} waiting`}>{waiting}</span>}
+            </Link>
           );
         })}
       </nav>
@@ -188,7 +201,7 @@ export function Layout({ children }: { children: ReactNode }) {
         <main id="main" tabIndex={-1} className="min-w-0 flex-1 px-4 py-8 sm:px-8 lg:px-12 lg:py-10">
           <div className="mx-auto max-w-[1240px]">
             <StatusBanner status={status} />
-            {children}
+            <div key={pathname} className="settle">{children}</div>
             <footer className="subtle mt-16 flex flex-col gap-2 border-t pt-6 text-[12px] sm:flex-row sm:justify-between" style={{ borderColor: "var(--line)" }}>
               <span>Rules decide, Gemini explains · demo actions run in a sandbox</span>
               <span className="mono">abide · on Google Cloud</span>

@@ -52,7 +52,7 @@ function Decide({ a, onDone }: { a: Approval; onDone: () => void }) {
   );
 }
 
-function Approvals() {
+export function Approvals() {
   const [status, setStatus] = useState<(typeof STATUSES)[number]>("pending");
   const reviewer = useReviewer();
   const { data, error, loading, reload } = useAsync(() => api.approvals(status), [status]);
@@ -101,7 +101,7 @@ function Approvals() {
   );
 }
 
-function Memory() {
+export function Memory() {
   const reviewer = useReviewer();
   const { data, error, loading, reload } = useAsync(() => api.memory(), []);
   const [err, setErr] = useState<string | null>(null);

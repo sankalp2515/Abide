@@ -4,9 +4,10 @@ import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./index.css";
 import "./landing.css";
 import { Layout } from "./components/Layout";
-import { Agents } from "./pages/Agents";
+import { Connect } from "./pages/Connect";
 import { Decisions } from "./pages/Decisions";
-import { Delegate } from "./pages/Delegate";
+import { Inbox } from "./pages/Inbox";
+import { Tasks } from "./pages/Tasks";
 import { Overview } from "./pages/Overview";
 import { Policy } from "./pages/Policy";
 import { Replay } from "./pages/Replay";
@@ -27,8 +28,12 @@ createRoot(document.getElementById("root")!).render(
       <Layout>
         <Routes>
           <Route path="/" element={<Overview />} />
-          <Route path="/delegate" element={<Delegate />} />
-          <Route path="/agents" element={<Agents />} />
+          <Route path="/tasks" element={<Tasks />} />
+          <Route path="/delegate" element={<Tasks />} />
+          <Route path="/agents" element={<Tasks />} />
+          <Route path="/inbox" element={<Inbox />} />
+          <Route path="/activity" element={<Decisions />} />
+          <Route path="/connect" element={<Connect />} />
           <Route path="/replay" element={<Replay />} />
           <Route path="/decisions" element={<Decisions />} />
           <Route path="/review" element={<Review />} />

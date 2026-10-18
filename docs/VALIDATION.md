@@ -89,3 +89,12 @@ Live on Cloud Run with Cloud SQL PostgreSQL: 14/14 end-to-end checks (Gemini exp
 - Bug found and fixed: the Gemini explanation was written after the question existed, so a quick approval could be lost with live agents. The explanation now comes first (test added).
 - pytest 212 passed, 5 skipped; ruff clean; Console tsc clean, 8/8 tests; production build ok.
 
+
+## Four places: Tasks, Needs you, Activity, Connect (18 Oct 2026, local, not deployed)
+
+- Walkthrough 18/18 through the merged Tasks page, live Gemini agents.
+- Local agent journey (browser automation): confirm in Tasks; the Needs you badge shows 1; approve in the inbox; the inbox clears; the agent's retry runs. 3/3 PASS.
+- Every page (landing, Tasks, composer, Needs you, Activity, Connect, Replay, settings) at desktop, phone and dark: no horizontal overflow, no console errors.
+- Bug found and fixed: after a gateway restart past sandbox tasks were labelled as your agent's (the label came from memory); now from stored data.
+- pytest 213 passed, 5 skipped; ruff clean; Console tsc clean, 8/8; production build ok.
+

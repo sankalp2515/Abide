@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { admin, agentName, api, type DecisionRow } from "../api";
 import { useReviewer } from "../reviewer";
 import { Insights } from "../components/Insights";
+import { Memory } from "./Review";
 import { Card, DecisionBadge, Empty, ErrorNote, Loading, PageHeader, Tag, useAsync } from "../components/ui";
 
 const LABELS = [
@@ -74,8 +75,8 @@ export function Decisions() {
 
   return (
     <div className="space-y-8">
-      <PageHeader index="04" label="Decisions" title={<>Every boundary<br />has a reason.</>}
-        lede="Every inspection and tool-call decision from every connected agent, newest first. Content appears only as a redacted preview." />
+      <PageHeader label="Activity · for security teams" title="What every agent was allowed to do."
+        lede="Every action checked and every document screened, newest first, with the reason. Content appears only as a redacted preview. Open a session to replay it." />
       <Insights />
       <Card>
         <div className="flex flex-col gap-4 md:flex-row md:flex-wrap md:items-end">
@@ -129,6 +130,7 @@ export function Decisions() {
           </div>
         </Card>
       )}
+      <Memory />
     </div>
   );
 }

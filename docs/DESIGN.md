@@ -33,8 +33,16 @@ dashed border. Each carries its word and an icon, so colour is never the only si
 
 - **Landing**: 1280 px content, an 80 px outer margin, and a 180 px margin rail for section numbers (§ 01). Text is
   left-aligned like a contract, never centred.
-- **App**: a left sidebar with four places: **Tasks** (Run a task, Your agents), **Activity** (Decisions, Replay,
-  Review), **Agents and tools**, and **Your business**. Below 1024 px the sidebar becomes a top bar.
+- **App**: four places, one idea each.
+  - **Tasks**: one list of sandbox runs and your own agents' tasks, plus a task view (work order, steps, questions,
+    receipt). Replay opens from a task.
+  - **Needs you**: every waiting question across tasks, with a badge, plus the reviewers' queue.
+  - **Activity**: the decision feed, BigQuery insights and what was learned from review.
+  - **Connect**: your key, how to connect an agent, the agents that acted under your work orders (live), your
+    businesses, and advanced filter settings.
+
+  Old addresses (`/delegate`, `/agents`, `/decisions`, `/review`, `/setup`, `/policy`) still open. Below 1024 px the
+  sidebar becomes a top bar, and the open task shows before the list.
 - **Shape**: 6 px corners, 1 px rules, 2 px dashed perforation under a work order's stub.
 
 ## Motion: only when something is decided

@@ -157,3 +157,18 @@ def test_the_task_list_shows_each_task_once_with_what_the_your_agents_page_needs
     assert row["request"] == "Read the quote" and row["status"] == "confirmed" and row["source"] == "api"
     assert row["stopped"] == 1 and row["waiting"] == 0 and row["business"]
     assert client.get("/v1/insights", headers=H(PROJECT)).json()["configured"] is False   # no BigQuery here
+
+
+def test_my_agents_lists_who_acted_under_my_work_orders_only(client):
+    s = client.post("/v1/delegations", json={"request": "Read the quote"}, headers=H(PROJECT)).json()
+    wf = s["workflow"]["id"]
+    client.post(f"/v1/delegations/{wf}/confirm", json={"hash": s["contract"]["hash"]}, headers=H(PROJECT))
+    for tool in ("wire_money", "read_file"):
+        client.post(f"/v1/delegations/{wf}/check", json={"agent": "billing-bot", "tool": tool, "args": {"name": "x"}},
+                    headers=H(PROJECT))
+    mine = {a["agent"]: a for a in client.get("/v1/my-agents", headers=H(PROJECT)).json()}
+    bot = mine["billing-bot"]
+    assert bot["checks"] == 2 and bot["stopped"] >= 1 and bot["tasks"] == 1 and bot["sandbox"] is True
+    svc = client.app.state.delegate_services["workspace"]
+    svc.store.execute("UPDATE delegate_principals SET principal = 'someone-else' WHERE workflow_id = ?", (wf,))
+    assert "billing-bot" not in {a["agent"] for a in client.get("/v1/my-agents", headers=H(PROJECT)).json()}

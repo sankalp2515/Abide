@@ -263,6 +263,31 @@ async def list_workspaces(request: Request, p: Principal = require("project")) -
     return out + [{"id": r["id"], "builtin": False, "description": r["description"]} for r in rows]
 
 
+@router.get("/v1/my-agents")
+async def my_agents(request: Request, p: Principal = require("project")) -> list[dict[str, Any]]:
+    """The agents that acted under your work orders, from the receipts: how often each was checked, what was allowed,
+    stopped or asked, and when it last acted. Sandbox agents (Gemini on ADK) and your own agents alike."""
+    svcs = _services(request)
+    store = next(iter(svcs.values())).store
+    builtin = [s.policy.workspace for s in svcs.values()]
+    marks = ",".join("?" for _ in builtin)
+    who = "" if p.scope == "admin" else "AND pr.principal = ?"
+    rows = store.query(
+        "SELECT r.agent AS agent, COUNT(*) AS checks, COUNT(DISTINCT r.workflow_id) AS tasks, MAX(r.created) AS last, "
+        "SUM(CASE WHEN r.decision = 'allow' THEN 1 ELSE 0 END) AS allowed, "
+        "SUM(CASE WHEN r.decision = 'block' THEN 1 ELSE 0 END) AS stopped, "
+        "SUM(CASE WHEN r.decision = 'ask' THEN 1 ELSE 0 END) AS asked, "
+        f"MAX(CASE WHEN w.workspace IN ({marks}) THEN 1 ELSE 0 END) AS sandbox, MAX(w.workspace) AS business "
+        "FROM delegate_receipts r JOIN delegate_principals pr ON pr.workflow_id = r.workflow_id "
+        "JOIN delegate_workflows w ON w.id = r.workflow_id "
+        f"WHERE r.kind = 'check' AND r.agent != '' {who} GROUP BY r.agent ORDER BY last DESC LIMIT 50",
+        (*builtin, *([] if p.scope == "admin" else [p.name])))
+    return [{**r, "checks": int(r["checks"]), "tasks": int(r["tasks"]), "allowed": int(r["allowed"] or 0),
+             "stopped": int(r["stopped"] or 0), "asked": int(r["asked"] or 0), "sandbox": bool(r["sandbox"]),
+             "kind": "Gemini on Google ADK (sandbox)" if r["sandbox"] else "Your agent, through the Abide API"}
+            for r in rows]
+
+
 @router.get("/v1/delegate-workspaces/{wid}")
 async def get_workspace(wid: str, request: Request, p: Principal = require("project")) -> dict[str, Any]:
     _may_use(request, wid, p)
@@ -311,6 +336,9 @@ async def start(body: StartRequest, request: Request, p: Principal = require("pr
     return svc.state(c.workflow_id)
 
 
+DEMO_EMPLOYEES = {"Ravi Kumar", "Arjun Mehta"}     # delegate_demo.live.EMPLOYEE (kept here to avoid importing ADK)
+
+
 @router.get("/v1/delegations")
 async def list_delegations(request: Request, p: Principal = require("project")) -> list[dict[str, Any]]:
     """Your tasks, newest first, with what the "Your agents" page shows: the request, its status and counts."""
@@ -328,8 +356,9 @@ async def list_delegations(request: Request, p: Principal = require("project")) 
         waiting = svc.store.query("SELECT COUNT(*) AS n FROM delegate_approvals WHERE workflow_id = ? AND status = "
                                   "'pending'", (w["id"],))
         counts = {r["decision"]: int(r["n"]) for r in checks}
+        sandbox = w["id"] in demos or w["owner"] in DEMO_EMPLOYEES     # the sandbox demo files tasks as Ravi or Arjun
         out.append({**w, "request": c.request[:300], "status": c.status, "business": svc.policy.workspace,
-                    "source": "demo" if w["id"] in demos else "api", "allowed": counts.get("allow", 0),
+                    "source": "demo" if sandbox else "api", "live": w["id"] in demos, "allowed": counts.get("allow", 0),
                     "stopped": counts.get("block", 0), "asked": counts.get("ask", 0),
                     "waiting": int(waiting[0]["n"]) if waiting else 0})
     return out

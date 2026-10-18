@@ -6,14 +6,26 @@ import { api } from "./api";
 export interface Employee { key: string; name: string }
 
 const STORE = "abide.employee";
+// "Remember me on this device": the key is kept in localStorage instead of this tab's sessionStorage, so the
+// tasks can be reopened after the tab closes. Off for shared computers.
 let current: Employee | null = (() => {
   try {
-    const raw = sessionStorage.getItem(STORE);
+    const raw = sessionStorage.getItem(STORE) ?? localStorage.getItem(STORE);
     return raw ? (JSON.parse(raw) as Employee) : null;
   } catch {
     return null;
   }
 })();
+let remember = (() => { try { return localStorage.getItem(STORE) !== null || localStorage.getItem("abide.remember") === "1"; } catch { return false; } })();
+export const remembering = () => remember;
+export function setRemember(on: boolean) {
+  remember = on;
+  try {
+    localStorage.setItem("abide.remember", on ? "1" : "0");
+    if (on && current) localStorage.setItem(STORE, JSON.stringify(current));
+    if (!on) localStorage.removeItem(STORE);
+  } catch { /* storage unavailable */ }
+}
 const listeners = new Set<() => void>();
 
 function set(e: Employee | null) {
@@ -21,6 +33,8 @@ function set(e: Employee | null) {
   try {
     if (e) sessionStorage.setItem(STORE, JSON.stringify(e));
     else sessionStorage.removeItem(STORE);
+    if (e && remember) localStorage.setItem(STORE, JSON.stringify(e));
+    if (!e) localStorage.removeItem(STORE);
   } catch {
     /* storage unavailable: the session lasts until reload */
   }

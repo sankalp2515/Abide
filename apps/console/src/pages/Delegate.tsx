@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
 import { Link } from "react-router-dom";
 import { delegate, type DApproval, type DClause, type DEvent, type DState } from "../api";
-import { signInEmployee, signOutEmployee, startTrial, useEmployee } from "../employee";
+import { setRemember, signInEmployee, signOutEmployee, startTrial, useEmployee } from "../employee";
 import { Empty, ErrorNote, PageHeader, Stamp, type StampKind } from "../components/ui";
 
 type Domain = "office" | "desk";
@@ -193,6 +193,7 @@ export function KeyGate() {
   const [key, setKey] = useState("");
   const [error, setError] = useState<string | null>(null);
   const [busy, setBusy] = useState(false);
+  const [remember, setRem] = useState(true);
   return (
     <section className="card card-raised overflow-hidden" aria-labelledby="signin-title">
       <div className="grid md:grid-cols-2">
@@ -202,7 +203,7 @@ export function KeyGate() {
           <p className="muted m-0 text-[15px] leading-relaxed">You get a 7-day key for this browser tab. Real Gemini agents work in a sandbox business, so nothing real is sent or refunded.</p>
           <button className="pill pill-primary" disabled={busy} onClick={async () => {
             setError(null); setBusy(true);
-            try { await startTrial(); } catch (err) {
+            try { setRemember(remember); await startTrial(); } catch (err) {
               const status = (err as { status?: number }).status;
               setError(status === 0 ? "The service isn't reachable. Is it running?"
                 : status === 429 ? "Too many trial keys from this network in the last hour. Try again later, or use a project key."
@@ -216,7 +217,7 @@ export function KeyGate() {
           <form className="flex flex-col gap-3" onSubmit={async (e) => {
             e.preventDefault();
             setError(null);
-            try { await signInEmployee(key); } catch (err) {
+            try { setRemember(remember); await signInEmployee(key); } catch (err) {
               const m = (err as Error).message;
               setError(m === "missing or invalid API key" ? "That key wasn't accepted. Check it and try again."
                 : m === "Backend unreachable" ? "The service isn't reachable. Is it running?" : m);
@@ -230,6 +231,10 @@ export function KeyGate() {
           <p className="subtle m-0 text-[13px]">{LOCAL ? <>Running locally? Use <span className="mono">local-project-key</span>. </> : null}The key stays in this tab only. Use the same key in your own agent: <Link className="text-link" to="/agents">Your agents</Link>.</p>
         </div>
       </div>
+      <label className="flex cursor-pointer items-center gap-3 border-t px-6 py-3 text-[14px] sm:px-8" style={{ borderColor: "var(--line)" }}>
+        <input type="checkbox" className="h-4 w-4" style={{ accentColor: "var(--accent)" }} checked={remember} onChange={(e) => setRem(e.target.checked)} />
+        <span>Remember me on this device, so you can come back to your tasks <span className="subtle">(leave off on a shared computer)</span></span>
+      </label>
       {error && <div className="border-t px-6 py-3 sm:px-8" style={{ borderColor: "var(--line)" }}><ErrorNote>{error}</ErrorNote></div>}
     </section>
   );
@@ -244,7 +249,11 @@ function Toggle({ id, checked, onChange, label, hint }: { id: string; checked: b
   );
 }
 
-export function Delegate() {
+/** The sandbox task view. On its own page (`/delegate` before) or embedded in Tasks: `open` shows an existing sandbox
+ *  task, no `open` shows the composer; `onOpened` reports a new task, `onNew` asks for the composer again. */
+export function Delegate({ open, onOpened, onNew, onMissing, embedded = false }: {
+  open?: string; onOpened?: (wf: string) => void; onNew?: () => void; onMissing?: (wf: string) => void; embedded?: boolean;
+} = {}) {
   const employee = useEmployee();
   const [domain, setDomain] = useState<Domain>("office");
   const [request, setRequest] = useState(DOMAINS.office.request);
@@ -265,14 +274,29 @@ export function Delegate() {
     try {
       const r = await fn();
       if (refresh && state && employee) setState(await delegate.get(employee.key, state.workflow.id));
-      else setState(r as DState);
+      else {
+        setState(r as DState);
+        const wf = (r as DState)?.workflow?.id;
+        if (wf && wf !== state?.workflow.id) onOpened?.(wf);
+      }
     } catch (e) {
       setError((e as Error).message);
     } finally {
       setBusy(false);
     }
   }
-  useEffect(() => { if (state) window.scrollTo({ top: 0 }); }, [state?.workflow.id]);
+  useEffect(() => { if (state && !embedded) window.scrollTo({ top: 0 }); }, [state?.workflow.id, embedded]);
+  // Embedded: open an existing sandbox task, or show the composer when nothing is open.
+  useEffect(() => {
+    if (!employee) return;
+    if (!open) { setState(null); setError(null); return; }
+    if (state?.workflow.id === open) return;
+    let alive = true;
+    delegate.get(employee.key, open).then((s) => { if (alive) { setState(s); if (s.demo?.domain === "desk" || s.demo?.domain === "office") setDomain(s.demo.domain); } })
+      .catch(() => { if (alive) onMissing?.(open); });
+    return () => { alive = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [open, employee?.key]);
   // Live Gemini agents work in the background: follow their steps until they finish.
   const working = state?.demo?.phase === "working";
   useEffect(() => {
@@ -292,7 +316,13 @@ export function Delegate() {
   const confirmed = state?.contract.status === "confirmed";
   const waitingExplain = (a: DApproval) => events.find((e) => e.outcome === "waiting" && e.tool === a.tool)?.explain;
 
-  const header = (
+  const header = embedded ? (
+    <div className="flex flex-wrap items-end justify-between gap-3">
+      <div><p className="section-label mb-1">{state ? `${DOMAINS[domain].label} · sandbox` : "New task · sandbox business"}</p>
+        <h2 className="h2" style={{ fontSize: "clamp(26px, 2.6vw, 36px)" }}>{state ? (state.contract.status === "draft" ? "Check the work order" : working ? "Your agents are working" : "Done") : "Hand off a task. Approve it once."}</h2></div>
+      {state && pending.length > 0 && <Stamp kind="wait">{pending.length} waits for you</Stamp>}
+    </div>
+  ) : (
     <PageHeader label="Tasks · Run a task" title={state ? <>{DOMAINS[domain].short}: {state.contract.status === "draft" ? "check the work order" : working ? "your agents are working" : "done"}</> : "Hand off a task. Approve it once."}
       lede={state ? undefined : "Your words become the work order. Your agents can do what you asked, and nothing a document tells them."}
       actions={employee ? <span className="flex flex-wrap items-center gap-2 text-xs md:justify-end">
@@ -357,7 +387,7 @@ export function Delegate() {
       {error && <ErrorNote>{error}</ErrorNote>}
 
       {state && (
-        <div className={confirmed ? "grid items-start gap-6 xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "mx-auto grid max-w-[880px] gap-6"}>
+        <div className={confirmed ? `grid items-start gap-6 ${embedded ? "2xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]" : "xl:grid-cols-[minmax(0,0.9fr)_minmax(0,1.1fr)]"}` : "mx-auto grid max-w-[880px] gap-6"}>
           <WorkOrder state={state} busy={busy} onConfirm={(accept) => act(() => delegate.confirm(employee.key, state.workflow.id, state.contract.hash, accept))}>
             {confirmed && (
               <form className="flex flex-col gap-2 border-t pt-4 sm:flex-row" style={{ borderColor: "var(--line)" }} onSubmit={(e) => { e.preventDefault(); act(() => delegate.say(employee.key, state.workflow.id, words)); }}>
@@ -420,7 +450,10 @@ export function Delegate() {
                 <p className="subtle m-0 border-t px-5 py-3 text-[12px]" style={{ borderColor: "var(--line)" }}>{state.report.writer.startsWith("model") ? "Written by Gemini from the evidence." : "Written from the evidence."} Every sentence cites receipts; a sentence the receipts do not support is dropped.</p>
               </section>
             )}
-            <button className="pill pill-sm" onClick={() => { setState(null); setError(null); setFilter(true); setHijacked(false); setAttackText(""); }}>Start another task</button>
+            <div className="flex flex-wrap gap-3">
+              <button className="pill pill-sm" onClick={() => { if (onNew) { onNew(); return; } setState(null); setError(null); setFilter(true); setHijacked(false); setAttackText(""); }}>Start another task</button>
+              {state.workflow.session_id && <Link className="pill pill-sm" to={`/replay?session=${encodeURIComponent(state.workflow.session_id)}`}>Security replay</Link>}
+            </div>
           </div>
         </div>
       )}

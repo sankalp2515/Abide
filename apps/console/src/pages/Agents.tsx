@@ -31,7 +31,7 @@ export function stepsFromReceipts(receipts: DReceipt[], approvals: DApproval[]):
   return out;
 }
 
-function Connect({ apiKey }: { apiKey: string }) {
+export function ConnectAgent({ apiKey }: { apiKey: string }) {
   const origin = serviceOrigin();
   const [copied, setCopied] = useState<string | null>(null);
   const copy = async (what: string, text: string) => {
@@ -63,7 +63,7 @@ function Connect({ apiKey }: { apiKey: string }) {
   );
 }
 
-function TaskRow({ t, active, onOpen }: { t: DTaskRow; active: boolean; onOpen: () => void }) {
+export function TaskRow({ t, active, onOpen }: { t: DTaskRow; active: boolean; onOpen: () => void }) {
   return (
     <li>
       <button onClick={onOpen} aria-current={active ? "true" : undefined} className="w-full cursor-pointer px-4 py-3.5 text-left"
@@ -79,7 +79,7 @@ function TaskRow({ t, active, onOpen }: { t: DTaskRow; active: boolean; onOpen: 
   );
 }
 
-function TaskDetail({ apiKey, wf }: { apiKey: string; wf: string }) {
+export function TaskDetail({ apiKey, wf }: { apiKey: string; wf: string }) {
   const [state, setState] = useState<DState | null>(null);
   const [report, setReport] = useState<DReport | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -165,7 +165,7 @@ export function Agents() {
   return (
     <div className="space-y-8">
       {header}
-      <Connect apiKey={employee.key} />
+      <ConnectAgent apiKey={employee.key} />
       {error && <ErrorNote>{error}</ErrorNote>}
       <div className="grid items-start gap-6 xl:grid-cols-[minmax(0,0.75fr)_minmax(0,1.25fr)]">
         <section className="card overflow-hidden xl:sticky xl:top-6" aria-labelledby="list-title">

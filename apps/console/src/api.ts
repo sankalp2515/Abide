@@ -328,7 +328,7 @@ export interface Insights {
 export interface DEvent { agent: string; tool: string; args: Record<string, unknown>; outcome: string; note: string; explain?: string }
 export interface DReport { writer: string; sentences: { text: string; cites: string[] }[]; dropped: { text: string; reason: string }[]; chain_ok: boolean }
 export interface DState {
-  workflow: { id: string; owner: string; created: number };
+  workflow: { id: string; owner: string; created: number; session_id?: string | null; workspace?: string };
   contract: DContract; versions: DContract[]; receipts: DReceipt[]; approvals: DApproval[];
   demo?: { domain?: string; attack: string; phase: string; firewall: boolean; events: DEvent[]; waiting: string[];
            agents?: "gemini" | "scripted"; agents_note?: string | null; error?: string | null; compromised?: boolean; custom_attack?: boolean;
@@ -374,7 +374,22 @@ export const tasks = {
   decide: (key: string, wf: string, approval: string, approve: boolean) =>
     call<{ status: string }>(`${wfPath(wf)}/approvals/${encodeURIComponent(approval)}`, { method: "POST", body: JSON.stringify({ approve }) }, key),
   report: (key: string, wf: string) => call<DReport>(`${wfPath(wf)}/report`, undefined, key),
+  agents: (key: string) => call<DAgent[]>("/v1/my-agents", undefined, key),
+  businesses: (key: string) => call<{ id: string; builtin: boolean; business?: string; description?: string }[]>("/v1/delegate-workspaces", undefined, key),
+  business: (key: string, id: string) => call<{ id: string; builtin: boolean; policy: DBusiness }>(`/v1/delegate-workspaces/${encodeURIComponent(id)}`, undefined, key),
 };
+export interface DAgent {
+  agent: string; checks: number; tasks: number; last: number; allowed: number; stopped: number; asked: number;
+  sandbox: boolean; kind: string; business: string;
+}
+export interface DBusiness {
+  workspace: string; org_domains: string[]; currency?: string;
+  tools: Record<string, { action: string; description?: string }>;
+  contacts: { id: string; name: string; address: string; aliases?: string[] }[];
+  resources: { id: string; name: string; data_class?: string }[];
+  records: { type: string; data_class?: string }[];
+  ask_before: { action: string; when: string }[];
+}
 
 /** Reviewer (admin-key) actions. The key is the reviewer's own, typed at sign-in; it is never part of the build. */
 export const admin = {
