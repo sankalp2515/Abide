@@ -123,9 +123,7 @@ function KeyChip() {
     <div className="flex flex-col gap-1.5">
       <span className="section-label">Your key</span>
       <span className="mono" style={{ fontSize: 12 }}>{masked}</span>
-      <button className="pill pill-sm" style={{ borderWidth: 1 }} onClick={async () => {
-        try { await navigator.clipboard.writeText(employee.key); setCopied(true); setTimeout(() => setCopied(false), 1800); } catch { /* no clipboard */ }
-      }}>{copied ? "Copied" : "Copy key for your agent"}</button>
+      <Link to="/connect" className="pill pill-sm" style={{ borderWidth: 1 }} onClick={() => setCopied(false)}>{copied ? "…" : "Agent keys"}</Link>
     </div>
   );
 }
@@ -137,7 +135,7 @@ function Sidebar({ status, theme }: { status: Status; theme: ReturnType<typeof u
   return (
     <aside className="lg:sticky lg:top-0 lg:h-screen lg:w-[256px] lg:shrink-0 lg:overflow-y-auto" style={{ background: "var(--bg-2)", borderRight: "1px solid var(--line)" }}>
       <div className="flex items-center justify-between gap-3 px-4 py-4 lg:px-5 lg:py-5">
-        <Link to="/" aria-label={`${PRODUCT_NAME} home`}><Wordmark /></Link>
+        <div><Link to="/" aria-label={`${PRODUCT_NAME} home`}><Wordmark /></Link><p className="side-cat">AI agent governance &amp; security</p></div>
         <div className="flex items-center gap-2 lg:hidden"><ThemeToggle {...theme} /><Link to="/delegate" className="pill pill-primary pill-sm">New task</Link></div>
       </div>
       <div className="hidden px-4 pb-3 lg:block"><Link to="/delegate" className="pill pill-primary w-full">New task</Link></div>

@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from "react";
-import { Link } from "react-router-dom";
+import { Link, useSearchParams } from "react-router-dom";
 import { delegate, type DApproval, type DClause, type DEvent, type DState } from "../api";
 import { setRemember, signInEmployee, signOutEmployee, startTrial, useEmployee } from "../employee";
-import { Empty, ErrorNote, PageHeader, Stamp, type StampKind } from "../components/ui";
+import { Empty, ErrorNote, PageHeader, SealMark, Stamp, type StampKind } from "../components/ui";
 
 type Domain = "office" | "desk";
 /** Two businesses, one product: the request, the sandbox and the attack choices change; the protection does not. */
@@ -220,33 +220,108 @@ export function TaskProgress({ confirmed, events, waiting, working, hasReceipt }
   );
 }
 
-/** The agent team as a strip of nodes: who did what, the sealed handoff between them, and who is working now. */
-export function AgentTeam({ events, working, live }: { events: DEvent[]; working: boolean; live: boolean }) {
+/** Which part of the business a tool call reaches, in a word (for the right lane of the checkpoint). */
+function system(tool: string): string {
+  const t = tool.toLowerCase();
+  return /refund|pay|purchase/.test(t) ? "Payments" : /invoice/.test(t) ? "Invoices" : /email|send|reply|message|notify/.test(t) ? "Email"
+    : /ticket/.test(t) ? "Tickets" : /order/.test(t) ? "Orders" : /export|customer|vendor|record|patient/.test(t) ? "Records"
+    : /file|attach|drive|share|draft/.test(t) ? "Files" : /inbox/.test(t) ? "Inbox" : "Your systems";
+}
+const READS = /^(read|list|lookup|open|get|search|screened)/;
+/** Where a stopped call's instruction came from, from its reason ("traced to …" / "came from …, not from you"). */
+function cameFrom(note: string): string | null {
+  const m = note.match(/traced to ([^)]+)\)/) ?? note.match(/came from (.+?), not from you/);
+  return m ? m[1].replace(/^tool:(.*)$/, "what $1 returned").replaceAll("_", " ") : null;
+}
+
+/** The checkpoint: the agents (outside Abide) on the left, Abide's decision on every tool call in the middle, and what
+ *  reached the business on the right. Each new call slides in from the agents' lane and is stamped at the checkpoint. */
+export function Checkpoint({ events, working, live, sandbox }: { events: DEvent[]; working: boolean; live: boolean; sandbox: boolean }) {
   const order: string[] = [];
   for (const e of events) if (e.agent && !order.includes(e.agent)) order.push(e.agent);
-  if (!order.length) return null;
   const active = working ? events[events.length - 1]?.agent : undefined;
+  const n = (o: string[]) => events.filter((e) => o.includes(e.outcome)).length;
+  const counts = [
+    { label: "calls checked", v: events.length, c: "var(--text)" },
+    { label: "ran", v: n(["ran", "allowed", "approved", "asked->ran"]), c: "var(--allow)" },
+    { label: "stopped", v: n(["blocked"]), c: "var(--block)" },
+    { label: "asked you", v: n(["waiting", "approved", "declined", "asked->ran"]), c: "var(--neutralise)" },
+    { label: "cleaned", v: n(["screened"]), c: "var(--neutralise)" },
+  ];
   return (
-    <div className="card flex flex-wrap items-stretch gap-2 p-4" aria-label="Agent team">
-      <span className="section-label w-full">Agent team · {live ? "Gemini on Google ADK" : "agents"}</span>
-      {order.map((a, i) => {
-        const mine = events.filter((e) => e.agent === a);
-        const st = mine.filter((e) => e.outcome === "blocked").length;
-        return (
-          <div key={a} className="flex items-center gap-2">
-            {i > 0 && <span className="mono subtle flex flex-col items-center px-1 text-[10px] leading-tight" aria-label="sealed handoff">
-              <svg width="40" height="12" viewBox="0 0 40 12" aria-hidden><path d="M0 6h34M30 2l5 4-5 4" fill="none" stroke="var(--accent)" strokeWidth="1.5" strokeDasharray={working ? "4 3" : undefined}>{working && <animate attributeName="stroke-dashoffset" from="14" to="0" dur="0.8s" repeatCount="indefinite" />}</path></svg>
-              sealed</span>}
-            <div className="flex items-center gap-3 rounded-md px-3 py-2" style={{ border: `1.5px solid ${a === active ? "var(--accent)" : "var(--line)"}`, background: a === active ? "var(--accent-wash)" : "var(--surface)" }}>
-              <span aria-hidden className="grid h-8 w-8 place-items-center rounded text-[12px] font-bold" style={{ background: "var(--surface-2)", color: "var(--accent)" }}>{a.slice(0, 2).toUpperCase()}</span>
-              <span className="flex flex-col"><b className="text-[14px] font-semibold capitalize">{a}</b>
-                <span className="subtle text-[12px]">{mine.length} steps{st ? <span style={{ color: "var(--block)" }}> · {st} stopped</span> : ""}</span></span>
-              {a === active && <span className="lg-live"><i /></span>}
-            </div>
-          </div>
-        );
-      })}
-    </div>
+    <section className="card card-raised overflow-hidden" aria-labelledby="cp-title">
+      <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3" style={{ background: "var(--surface-2)" }}>
+        <h2 id="cp-title" className="section-label m-0 flex items-center gap-2"><span style={{ color: "var(--accent)" }}><SealMark size={16} /></span>
+          Abide sits between your agents and your business</h2>
+        <div className="flex flex-wrap gap-x-4 gap-y-1" aria-label="Checkpoint counts">
+          {counts.filter((c, i) => i < 3 || c.v).map((c) => <span key={c.label} className="mono text-[12px]"><b style={{ color: c.c, fontSize: 15 }}>{c.v}</b> {c.label}</span>)}
+        </div>
+      </div>
+      <div className="cp-grid cp-head">
+        <div className="cp-a">
+          <b className="block text-[14px]">Their agents · outside Abide</b>
+          <span className="subtle block text-[12px] leading-snug">{sandbox ? (live ? "Gemini on Google ADK, hosted next to Abide only for this demo" : "Stand-in agents for this demo") : "Your agents, on your side; they call Abide with an agent key"}</span>
+          <div className="mt-2 flex flex-wrap gap-1.5">{order.map((a) => (
+            <span key={a} className="cp-agent" data-on={a === active || undefined}>{a === active && <span className="lg-live" style={{ fontSize: 10 }}><i /></span>}{a}
+              <span className="subtle">{events.filter((e) => e.agent === a).length}</span></span>))}</div>
+        </div>
+        <div className="cp-b">
+          <b className="block text-[14px]" style={{ color: "var(--accent)" }}>Abide checkpoint</b>
+          <span className="subtle block text-[12px] leading-snug">Checks every tool call against your work order before it runs</span>
+        </div>
+        <div className="cp-c">
+          <b className="block text-[14px]">Your business</b>
+          <span className="subtle block text-[12px] leading-snug">{sandbox ? "Sandbox: nothing real is sent or paid" : "Your tools and systems"}</span>
+        </div>
+      </div>
+      {events.length === 0 ? <div className="cp-grid"><div className="cp-a" /><div className="cp-b subtle text-[13px]">{working ? "Your agents are starting…" : "No tool calls yet. Each one stops here first."}</div><div className="cp-c" /></div>
+        : <ol className="m-0 list-none p-0">{events.map((e, i) => {
+          const o = OUTCOME[e.outcome] ?? { text: e.outcome, kind: "quiet" as StampKind };
+          const stopped = e.outcome === "blocked";
+          const from = stopped ? cameFrom(e.note) : null;
+          const handoff = i > 0 && events[i - 1].agent !== e.agent;
+          const last = working && i === events.length - 1;
+          const effect = stopped ? "Never reached your business" : e.outcome === "waiting" ? "Held until you answer"
+            : e.outcome === "declined" ? "Not done: you said no" : e.outcome === "screened" ? "Cleaned before the agent read it"
+            : `${READS.test(e.tool) ? "Read from" : e.outcome === "allowed" ? "Allowed into" : "Reached"} ${system(e.tool)}`;
+          return (
+            <li key={i} className="cp-row" style={{ ["--d" as string]: `${Math.min(i, 12) * 60}ms` }}>
+              {handoff && <div className="cp-grid cp-handoff"><div className="cp-a mono text-[11px]">↓ {events[i - 1].agent} hands off to <b>{e.agent}</b>{sandbox ? " · sealed, checked" : ""}</div><div className="cp-b" /><div className="cp-c" /></div>}
+              <div className="cp-grid" data-stopped={stopped || undefined}>
+                <div className="cp-a cp-call">
+                  <span className="cp-who" aria-hidden>{e.agent.slice(0, 2).toUpperCase()}</span>
+                  <span className="min-w-0 flex-1"><span className="subtle block text-[11px]">{e.agent.charAt(0).toUpperCase() + e.agent.slice(1)} tries</span>
+                    <span className="block text-[14px] leading-snug [overflow-wrap:anywhere]">{stepText(e.tool, e.args)}</span></span>
+                  <svg className="cp-arrow" width="26" height="10" viewBox="0 0 26 10" aria-hidden><path d="M0 5h21M17 1l4 4-4 4" fill="none" stroke="currentColor" strokeWidth="1.5" strokeDasharray={last ? "3 3" : undefined}>{last && <animate attributeName="stroke-dashoffset" from="12" to="0" dur="0.7s" repeatCount="indefinite" />}</path></svg>
+                </div>
+                <div className="cp-b">
+                  <Stamp kind={o.kind} live>{o.text}</Stamp>
+                  {e.note && e.outcome !== "ran" && <p className="mono m-0 mt-1.5 text-[11.5px] leading-snug" style={{ color: stopped ? "var(--block)" : "var(--subtle)" }}>{e.note.replace(/\s*\(traced to [^)]+\)/, "")}</p>}
+                  {from && <p className="cp-from m-0 mt-1.5"><span aria-hidden>⚑</span> Instruction came from <b>{from}</b>, not from you</p>}
+                  {e.explain && (stopped || e.outcome === "waiting") && <p className="m-0 mt-1.5 text-[13px] leading-snug" style={{ color: "var(--muted)" }}><span className="mono mr-1" style={{ color: "var(--accent)" }}>GEMINI</span>{e.explain}</p>}
+                </div>
+                <div className="cp-c text-[13px]" style={{ color: stopped ? "var(--block)" : e.outcome === "waiting" ? "var(--neutralise)" : "var(--muted)" }}>
+                  <span aria-hidden className="mr-1.5">{stopped ? "✕" : e.outcome === "waiting" ? "⏸" : e.outcome === "screened" ? "⚑" : "→"}</span>{effect}
+                </div>
+              </div>
+            </li>
+          );
+        })}</ol>}
+    </section>
+  );
+}
+
+/** The full record of each step, opened on demand (the checkpoint above shows the same steps at a glance). */
+export function StepDetails({ events, title, children }: { events: DEvent[]; title: string; children?: ReactNode }) {
+  const [open, setOpen] = useState(false);
+  return (
+    <details className="card overflow-hidden" onToggle={(e) => setOpen((e.target as HTMLDetailsElement).open)}>
+      <summary className="flex cursor-pointer flex-wrap items-baseline justify-between gap-2 px-5 py-4">
+        <span className="h3">{title}</span><span className="subtle text-[13px]">{events.length} steps · open for each step in full</span>
+      </summary>
+      {children}
+      {open && <ol className="m-0 list-none p-0">{events.map((e, i) => <StepRow key={i} e={e} n={i + 1} />)}</ol>}
+    </details>
   );
 }
 
@@ -289,7 +364,7 @@ export function KeyGate() {
               value={key} onChange={(e) => setKey(e.target.value)} />
             <button className="pill self-start" disabled={!key.trim()}>Continue with key</button>
           </form>
-          <p className="subtle m-0 text-[13px]">{LOCAL ? <>Running locally? Use <span className="mono">local-project-key</span>. </> : null}The key stays in this tab only. Use the same key in your own agent: <Link className="text-link" to="/agents">Your agents</Link>.</p>
+          <p className="subtle m-0 text-[13px]">{LOCAL ? <>Running locally? Use <span className="mono">local-project-key</span>. </> : null}This is your own key; it stays with you. Your agents get their own agent key, which can never approve: <Link className="text-link" to="/connect">Connect</Link>.</p>
         </div>
       </div>
       <label className="flex cursor-pointer items-center gap-3 border-t px-6 py-3 text-[14px] sm:px-8" style={{ borderColor: "var(--line)" }}>
@@ -309,6 +384,8 @@ function Toggle({ id, checked, onChange, label, hint }: { id: string; checked: b
     </label>
   );
 }
+
+let autoStarted = false;   // the landing page's one-click attack starts once per visit
 
 /** The sandbox task view. On its own page (`/delegate` before) or embedded in Tasks: `open` shows an existing sandbox
  *  task, no `open` shows the composer; `onOpened` reports a new task, `onNew` asks for the composer again. */
@@ -370,6 +447,19 @@ export function Delegate({ open, onOpened, onNew, onMissing, embedded = false }:
     return () => clearInterval(timer);
   }, [working, state?.workflow.id, employee?.key]);
 
+  // One click for a first look: the support desk, a poisoned photo and a hijacked agent (also from the landing page).
+  const attackDemo = () => {
+    pick("desk"); setAttack("email-body"); setHijacked(true); setFilter(true);
+    if (employee) act(() => delegate.start(employee.key, DOMAINS.desk.request, "email-body", true, "desk", true, ""));
+  };
+  const [params] = useSearchParams();
+  useEffect(() => {
+    if (!employee || open || state || autoStarted || params.get("preset") !== "attack") return;
+    autoStarted = true;
+    attackDemo();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [employee?.key, open]);
+
   const pending = useMemo(() => (state?.approvals ?? []).filter((a) => a.status === "pending"), [state]);
   const events = state?.demo?.events ?? [];
   const stopped = events.filter((e) => e.outcome === "blocked").length;
@@ -399,6 +489,15 @@ export function Delegate({ open, onOpened, onNew, onMissing, embedded = false }:
     <div className="space-y-8">
       {header}
 
+      {!state && (
+        <section className="cp-quick settle" aria-labelledby="quick-title">
+          <div className="min-w-0">
+            <h2 id="quick-title" className="m-0 text-[17px] font-semibold">First look? Watch Abide stop a hijacked agent.</h2>
+            <p className="subtle m-0 mt-1 text-[14px]">One click: Arjun asks to refund order 4521, up to ₹2,000. A line hidden in the customer’s ticket tells the agents to export the customer list and refund more. You see every call reach the checkpoint.</p>
+          </div>
+          <button className="pill pill-primary" disabled={busy} onClick={attackDemo}>{busy ? "Reading your request…" : "Watch it stop an attack"}</button>
+        </section>
+      )}
       {!state && (
         <section className="card card-raised settle overflow-hidden" aria-labelledby="new-title">
           <div className="flex flex-wrap items-center justify-between gap-3 px-5 py-3" style={{ background: "var(--surface-2)" }}>
@@ -450,7 +549,7 @@ export function Delegate({ open, onOpened, onNew, onMissing, embedded = false }:
       {state && (
         <div className="space-y-4">
           <TaskProgress confirmed={!!confirmed} events={events} waiting={pending.length} working={!!working} hasReceipt={!!state.report} />
-          {events.length > 0 && <AgentTeam events={events} working={!!working} live={state.demo?.agents === "gemini"} />}
+          {confirmed && <Checkpoint events={events} working={!!working} live={state.demo?.agents === "gemini"} sandbox />}
         </div>
       )}
       {state && (
@@ -472,28 +571,28 @@ export function Delegate({ open, onOpened, onNew, onMissing, embedded = false }:
               </section>
             )}
 
-            <section className="card overflow-hidden" aria-labelledby="steps-title">
-              <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pb-3 pt-5">
-                <h2 id="steps-title" className="h3">What your agents did</h2>
-                <span className="subtle text-[13px]">{confirmed ? `${events.length} steps · ${stopped} stopped${state.demo && !state.demo.firewall ? " · content filter off" : ""}${state.demo?.compromised ? " · hijacked agent" : ""}` : "starts after you confirm"}</span>
-              </div>
-              {working && <div className="relative h-[2px] overflow-hidden" style={{ background: "var(--line)" }} aria-hidden><span className="absolute inset-y-0 left-0 w-1/3 animate-[scan_1.4s_ease-in-out_infinite]" style={{ background: "var(--accent)" }} /></div>}
-              {state.demo && confirmed && (
-                <p className="subtle m-0 flex items-center gap-2 px-5 pb-3 text-[13px]">
-                  {state.demo.agents === "gemini" && <span className="lg-live"><i />Live</span>}
-                  {state.demo.agents === "gemini"
-                    ? "Gemini agents (Google ADK). Their steps are not scripted; every tool call is checked against your work order."
-                    : `Scripted stand-in agents${state.demo.agents_note ? ` (${state.demo.agents_note})` : ""}.`}</p>
-              )}
-              {state.demo?.error && <p role="alert" className="m-0 px-5 pb-3 text-[13px]" style={{ color: "var(--block)" }}>{state.demo.error}</p>}
-              {events.length === 0 ? <div className="px-5 pb-5"><Empty>{working ? "Your agents are starting…" : confirmed ? "Nothing yet." : "Confirm the work order to start your agents."}</Empty></div> : (
-                <ol className="m-0 list-none p-0">{events.map((e, i) => <StepRow key={i} e={e} n={i + 1} />)}</ol>
-              )}
-              {working && events.length > 0 && <p className="subtle m-0 border-t px-5 py-3 text-[13px]" style={{ borderColor: "var(--line)" }}>Your agents are still working…</p>}
-              {ws && (ws.drafts.length > 0 || ws.sent.length > 0 || (ws.refunds?.length ?? 0) > 0) && (
-                <p className="subtle mono m-0 border-t px-5 py-3 text-[12px] leading-relaxed" style={{ borderColor: "var(--line)" }}>Sandbox now: {ws.refunds ? `${ws.refunds.length} refund(s) (${ws.refunds.map((r) => `order ${r.order_id} ₹${Number(r.amount).toLocaleString("en-IN")}`).join(", ") || "none"}) · ` : `${ws.drafts.length} draft(s) saved · `}{ws.sent.length} email(s) sent{ws.sent.length ? ` (to ${ws.sent.map((s) => String(s.to)).join(", ")})` : ""}</p>
-              )}
-            </section>
+            {confirmed && (
+              <section className="card overflow-hidden" aria-labelledby="steps-title">
+                <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pb-3 pt-5">
+                  <h2 id="steps-title" className="h3">What your agents did</h2>
+                  <span className="subtle text-[13px]">{events.length} steps · {stopped} stopped{state.demo && !state.demo.firewall ? ' · content filter off' : ''}{state.demo?.compromised ? ' · hijacked agent' : ''}</span>
+                </div>
+                {working && <div className="relative h-[2px] overflow-hidden" style={{ background: 'var(--line)' }} aria-hidden><span className="absolute inset-y-0 left-0 w-1/3 animate-[scan_1.4s_ease-in-out_infinite]" style={{ background: 'var(--accent)' }} /></div>}
+                {state.demo && (
+                  <p className="subtle m-0 flex items-center gap-2 px-5 pb-3 text-[13px]">
+                    {state.demo.agents === 'gemini' && <span className="lg-live"><i />Live</span>}
+                    {state.demo.agents === 'gemini'
+                      ? 'Gemini agents (Google ADK). Their steps are not scripted; every tool call is checked against your work order.'
+                      : `Scripted stand-in agents${state.demo.agents_note ? ` (${state.demo.agents_note})` : ''}.`}</p>
+                )}
+                {state.demo?.error && <p role="alert" className="m-0 px-5 pb-3 text-[13px]" style={{ color: 'var(--block)' }}>{state.demo.error}</p>}
+                {working && <p className="subtle m-0 border-t px-5 py-3 text-[13px]" style={{ borderColor: 'var(--line)' }}>{events.length ? 'Your agents are still working…' : 'Your agents are starting…'}</p>}
+                {ws && (ws.drafts.length > 0 || ws.sent.length > 0 || (ws.refunds?.length ?? 0) > 0) && (
+                  <p className="subtle mono m-0 border-t px-5 py-3 text-[12px] leading-relaxed" style={{ borderColor: 'var(--line)' }}>Sandbox now: {ws.refunds ? `${ws.refunds.length} refund(s) (${ws.refunds.map((r) => `order ${r.order_id} ₹${Number(r.amount).toLocaleString('en-IN')}`).join(', ') || 'none'}) · ` : `${ws.drafts.length} draft(s) saved · `}{ws.sent.length} email(s) sent{ws.sent.length ? ` (to ${ws.sent.map((s) => String(s.to)).join(', ')})` : ''}</p>
+                )}
+              </section>
+            )}
+            {events.length > 0 && <StepDetails events={events} title="Each step in full" />}
 
             {state.report && (
               <section className="card settle overflow-hidden" aria-labelledby="receipt-title">

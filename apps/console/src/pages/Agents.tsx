@@ -3,7 +3,7 @@ import { Link } from "react-router-dom";
 import { serviceOrigin, tasks, type DApproval, type DEvent, type DReceipt, type DReport, type DState, type DTaskRow } from "../api";
 import { signOutEmployee, useEmployee } from "../employee";
 import { Empty, ErrorNote, PageHeader, Stamp, ago } from "../components/ui";
-import { AgentTeam, ApprovalCard, KeyGate, StepRow, TaskProgress, WorkOrder } from "./Delegate";
+import { ApprovalCard, Checkpoint, KeyGate, StepDetails, TaskProgress, WorkOrder } from "./Delegate";
 
 /* "Your agents": the tasks your own agents run through the API (the one-file client, ADK, LangChain, MCP …), with
    the same work order, questions and receipt as the sandbox. Sign in with the key your agent uses. */
@@ -37,7 +37,7 @@ export function ConnectAgent({ apiKey }: { apiKey: string }) {
   const copy = async (what: string, text: string) => {
     try { await navigator.clipboard.writeText(text); setCopied(what); setTimeout(() => setCopied(null), 1800); } catch { /* no clipboard */ }
   };
-  const code = `pip install httpx\ncurl -O ${origin}/v1/sdk/abide.py\n\n# in your agent\nfrom abide import DelegateClient, ToolGate\nclient = DelegateClient("${origin}", "<your key>")\ncard = await client.start("Read the launch plan and email Sam a summary.", workspace="<your business>")\n# confirm the card here, on this page, then:\ngate = ToolGate(client, card["workflow_id"], "my-agent")\nsend_email = gate.wrap(send_email)`;
+  const code = `pip install httpx\ncurl -O ${origin}/v1/sdk/abide.py\n\n# in your agent\nfrom abide import DelegateClient, ToolGate\nclient = DelegateClient("${origin}", "<your agent key>")\ncard = await client.start("Read the launch plan and email Sam a summary.", workspace="<your business>")\n# confirm the card here, on this page, then:\ngate = ToolGate(client, card["workflow_id"], "my-agent")\nsend_email = gate.wrap(send_email)`;
   return (
     <section className="card overflow-hidden" aria-labelledby="connect-title">
       <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1fr)_minmax(0,1.2fr)]">
@@ -45,7 +45,7 @@ export function ConnectAgent({ apiKey }: { apiKey: string }) {
           <span className="section-label">Connect an agent on your machine</span>
           <h2 id="connect-title" className="h3">Your agent runs locally. You approve here.</h2>
           <ol className="m-0 list-none space-y-3 p-0 text-[15px]">
-            <li className="flex gap-3"><span className="mono pt-0.5" style={{ color: "var(--accent)" }}>1</span><span>Give your agent this key: <button className="pill pill-sm ml-1" onClick={() => copy("key", apiKey)}>{copied === "key" ? "Copied" : "Copy key"}</button></span></li>
+            <li className="flex gap-3"><span className="mono pt-0.5" style={{ color: "var(--accent)" }}>1</span><span>Make an <b>agent key</b> below and give it to your agent. It can act inside your work orders but never approve them; keep your own key to yourself.</span></li>
             <li className="flex gap-3"><span className="mono pt-0.5" style={{ color: "var(--accent)" }}>2</span><span>Wrap its tools with the one-file client (ADK, LangChain, OpenAI Agents SDK, MCP or plain functions).</span></li>
             <li className="flex gap-3"><span className="mono pt-0.5" style={{ color: "var(--accent)" }}>3</span><span>Its tasks appear below. Confirm the work order, answer its questions, read the receipt.</span></li>
           </ol>
@@ -104,7 +104,7 @@ export function TaskDetail({ apiKey, wf }: { apiKey: string; wf: string }) {
     <div className="space-y-6">
       {error && <ErrorNote>{error}</ErrorNote>}
       <TaskProgress confirmed={confirmed} events={steps} waiting={pending.length} working={false} hasReceipt={!!report} />
-      {steps.length > 0 && <AgentTeam events={steps} working={false} live={false} />}
+      {confirmed && <Checkpoint events={steps} working={false} live={false} sandbox={false} />}
       <WorkOrder state={state} busy={busy} onConfirm={(accept) => act(() => tasks.confirm(apiKey, wf, state.contract.hash, accept))}>
         {confirmed && (
           <form className="flex flex-col gap-2 border-t pt-4 sm:flex-row" style={{ borderColor: "var(--line)" }} onSubmit={(e) => { e.preventDefault(); if (words.trim()) act(() => tasks.amend(apiKey, wf, words)).then(() => setWords("")); }}>
@@ -116,14 +116,8 @@ export function TaskDetail({ apiKey, wf }: { apiKey: string; wf: string }) {
       </WorkOrder>
       {pending.map((a) => <ApprovalCard key={a.id} a={a} busy={busy} explain={steps.find((s) => s.outcome === "waiting" && s.tool === a.tool)?.explain}
         onDecide={(ok) => act(() => tasks.decide(apiKey, wf, a.id, ok))} />)}
-      <section className="card overflow-hidden" aria-labelledby="agent-steps">
-        <div className="flex flex-wrap items-baseline justify-between gap-2 px-5 pb-3 pt-5">
-          <h2 id="agent-steps" className="h3">What your agent did</h2>
-          <span className="subtle flex items-center gap-2 text-[13px]"><span className="lg-live"><i />Live</span>{steps.length} steps</span>
-        </div>
-        {steps.length === 0 ? <div className="px-5 pb-5"><Empty>{confirmed ? "No tool calls yet. They appear here as your agent makes them." : "Confirm the work order; your agent's tool calls are refused until you do."}</Empty></div>
-          : <ol className="m-0 list-none p-0">{steps.map((e, i) => <StepRow key={i} e={e} n={i + 1} />)}</ol>}
-      </section>
+      {steps.length === 0 ? <Empty>{confirmed ? "No tool calls yet. They appear above as your agent makes them." : "Confirm the work order; your agent's tool calls are refused until you do."}</Empty>
+        : <StepDetails events={steps} title="Each step in full" />}
       <section className="card overflow-hidden" aria-labelledby="agent-receipt">
         <div className="flex flex-wrap items-center justify-between gap-2 px-5 py-4">
           <h2 id="agent-receipt" className="h3">Work receipt</h2>

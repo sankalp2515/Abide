@@ -14,7 +14,8 @@ export function SealMark({ size = 26 }: { size?: number }) {
 
 export function Wordmark() {
   return <span className="flex items-center gap-2.5" style={{ color: "var(--accent)" }}><SealMark size={24} />
-    <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 21, letterSpacing: "-0.02em" }}>abide</span></span>;
+    <span style={{ color: "var(--text)", fontWeight: 700, fontSize: 21, letterSpacing: "-0.02em" }}>abide</span>
+    <span className="wm-sub">AI agent governance &amp; security</span></span>;
 }
 
 /* ---- stamps: the product's decisions, readable without colour ------------------------------------- */

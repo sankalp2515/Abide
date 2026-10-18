@@ -126,12 +126,20 @@ function Hero() {
   return (
     <section className="lg-wrap lg-hero" aria-labelledby="hero-title">
       <div className="lg-hero-copy">
-        <span className="section-label">For teams that hand work to AI agents</span>
+        <span className="section-label lg-category">AI agent governance &amp; security · not another agent</span>
         <h1 id="hero-title" className="lg-display">Hand off the task. <span>Approve it once.</span></h1>
-        <p className="lg-hero-lede">You say what you want in plain words. Abide turns them into a work order your AI agents must follow. They work on their own; anything you didn’t ask for is stopped, even when a document tells them to do it.</p>
+        <p className="lg-hero-lede">Abide is the checkpoint between your AI agents and your business. You say what you want in plain words; Abide turns them into a work order and checks every tool call against it. Anything you didn’t ask for is stopped, even when a document tells the agent to do it.</p>
         <div className="lg-actions">
-          <Link to="/delegate" className="pill pill-primary lg-cta">Run a live task <span aria-hidden>→</span></Link>
-          <SectionLink id="integrate" className="pill lg-cta">Connect your agent</SectionLink>
+          <Link to="/tasks?task=new&amp;preset=attack" className="pill pill-primary lg-cta">Watch it stop a hijacked agent <span aria-hidden>→</span></Link>
+          <Link to="/delegate" className="pill lg-cta">Run your own task</Link>
+          <SectionLink id="integrate" className="text-link lg-cta-link">Connect your agent</SectionLink>
+        </div>
+        <div className="lg-sits" aria-label="Where Abide sits">
+          <span><b>Your AI agents</b><i>Gemini · ADK · LangChain · MCP</i></span>
+          <span aria-hidden className="lg-sits-arrow">→</span>
+          <span className="lg-sits-gate"><b>Abide checks every call</b><i>Ran · Stopped · Waits for you</i></span>
+          <span aria-hidden className="lg-sits-arrow">→</span>
+          <span><b>Your business</b><i>email · payments · records</i></span>
         </div>
         <p className="lg-fine">No sign-up: a private 7-day key is made for you. Real Gemini agents work in a sandbox business; nothing real is sent.</p>
       </div>

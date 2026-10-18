@@ -181,3 +181,15 @@
   .lg-run-log li .stamp { grid-column: 2; justify-self: start; }
   .lg-hero-cap { position: static; display: block; margin-top: 10px; }
 }
+
+/* the category, said up front, and where Abide sits */
+.lg-category { color: var(--accent); }
+.lg-cta-link { align-self: center; font-weight: 600; }
+.lg-sits { display: flex; flex-wrap: nowrap; align-items: stretch; gap: 6px; margin: 22px 0 6px; max-width: 760px; }
+.lg-sits > span:not(.lg-sits-arrow) { flex: 1 1 0; min-width: 0; }
+@media (max-width: 640px) { .lg-sits { flex-wrap: wrap; } .lg-sits > span:not(.lg-sits-arrow) { flex-basis: 100%; } .lg-sits-arrow { transform: rotate(90deg); margin: 0 auto; } }
+.lg-sits > span:not(.lg-sits-arrow) { display: flex; flex-direction: column; gap: 2px; padding: 9px 12px; border-radius: 6px; border: 1px dashed var(--line-strong); background: var(--surface); }
+.lg-sits b { font-size: 13.5px; } .lg-sits i { font-style: normal; font-size: 11.5px; color: var(--subtle); }
+.lg-sits .lg-sits-gate { border: 2px solid var(--accent) !important; background: var(--accent-wash) !important; }
+.lg-sits .lg-sits-gate b { color: var(--accent); }
+.lg-sits-arrow { align-self: center; color: var(--accent); font-weight: 700; }
