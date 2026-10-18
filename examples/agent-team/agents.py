@@ -26,6 +26,7 @@ CONSOLE = os.environ.get("ABIDE_CONSOLE", "http://localhost:8000")
 HIJACKED = os.environ.get("HIJACKED", "1") == "1"
 REQUEST = os.environ.get("ABIDE_REQUEST", "Pay invoice INV-1042 from Paper Mill, up to ₹15,000, and email Priya that it is paid.")
 WAIT_S = int(os.environ.get("ABIDE_WAIT_S", "900"))
+WORKSPACE = os.environ.get("ABIDE_WORKSPACE", "northwind-books")   # business ids are unique per service
 
 # ---- the business, as Abide sees it (registered once; tools, people, files and records) ----------------------------
 POLICY = {
@@ -111,19 +112,19 @@ async def main() -> int:
     from abide import DelegateError
     client = DelegateClient(BASE, KEY)
     try:                                   # with an agent key this is refused: a person adds the business, once
-        await client.register_workspace("northwind-books", POLICY, "Northwind Books · accounts (test agent team)")
+        await client.register_workspace(WORKSPACE, POLICY, "Northwind Books · accounts (test agent team)")
     except DelegateError as e:
         if e.status != 403:
             raise
 
         async def registered():
-            return any(w["id"] == "northwind-books" for w in await client.workspaces())
+            return any(w["id"] == WORKSPACE for w in await client.workspaces())
         if not await registered():
             import json
-            print("\n>> A person must add this business once: Connect > Add your business, id: northwind-books")
+            print(f"\n>> A person must add this business once: Connect > Add your business, id: {WORKSPACE}")
             print("   Paste this definition:\n" + json.dumps(POLICY, ensure_ascii=False) + "\n", flush=True)
             await wait_until(registered, "the business to be added in Connect")
-    card = await client.start(REQUEST, workspace="northwind-books", owner="northwind")
+    card = await client.start(REQUEST, workspace=WORKSPACE, owner="northwind")
     wf = card["workflow_id"]
     print("\n== Northwind Books agent team ==")
     print(f"Task {wf}: “{REQUEST}”")
