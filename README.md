@@ -1,173 +1,204 @@
-# Abide
+<div align="center">
 
-**Hand off the task. Approve it once.**
+<picture>
+  <source media="(prefers-color-scheme: dark)" srcset="docs/brand/abide-logo-dark.svg">
+  <img alt="Abide" src="docs/brand/abide-logo-light.svg" width="420">
+</picture>
 
-Abide makes it safe to hand everyday office work to a team of AI agents. The employee's own request
-becomes the permission: Gemini turns it into a short card of what the agents may and may not do, every agent tool
-call is checked against that card, and the employee gets a receipt of what actually happened.
+### The security checkpoint between your AI agents and your business
 
-Built for the Google Cloud AI Builder Cup 2026, track **Future of Work & Enterprise Productivity**.
+**Hand off the task. Approve it once.** Anything you didn't ask for is stopped, even when a document tells the agent to do it.
 
-![Architecture](docs/architecture.svg)
+[![CI](https://github.com/sankalp2515/Abide/actions/workflows/ci.yml/badge.svg)](https://github.com/sankalp2515/Abide/actions/workflows/ci.yml)
+[![License](https://img.shields.io/badge/license-Apache--2.0-1D5E46)](LICENSE)
+[![Python](https://img.shields.io/badge/python-3.11-1D5E46)](packages/core/pyproject.toml)
+[![Live on Cloud Run](https://img.shields.io/badge/live-Cloud%20Run-4285F4?logo=googlecloud&logoColor=white)](https://abide-1041805455955.us-central1.run.app)
+[![Gemini](https://img.shields.io/badge/Gemini%203.5%20Flash-Vertex%20AI-8E75B2?logo=googlegemini&logoColor=white)](docs/ARCHITECTURE.md)
+[![Google ADK](https://img.shields.io/badge/agents-Google%20ADK-4285F4)](docs/INTEGRATE.md)
 
-## The problem
+[**Try it live**](https://abide-1041805455955.us-central1.run.app/#/tasks?task=new&preset=attack) ·
+[Evaluation](https://abide-1041805455955.us-central1.run.app/#/evaluation) ·
+[Quick start](#quick-start) ·
+[Bring your own agent](docs/INTEGRATE.md) ·
+[Colab](examples/colab/abide_quickstart.ipynb) ·
+[Architecture](docs/ARCHITECTURE.md)
 
-Companies want agents to read a supplier's quote, draft the reply, issue a refund or update an order. Today they have
-two bad choices: approve every step (people click "yes" without reading, and the work stops at every step) or grant
-broad tool permissions up front (one hidden line in a PDF or support ticket can tell an agent to send the customer list
-outside the company). Neither is tied to what the employee actually asked for.
+<img src="docs/hero.gif" alt="Live: a hijacked Gemini agent tries to open another customer's order; Abide stops it and traces the instruction to the customer's ticket" width="860">
+
+<sub>Recorded on the live deployment: real Gemini agents on Google ADK, one hijacked by a line hidden in a support ticket.</sub>
+
+</div>
+
+---
+
+## Why Abide
+
+AI agents now do real work: refunds, invoices, emails, records. But **an agent obeys whatever it reads**. One hidden line in a ticket, PDF or invoice can make it pay, send or export something nobody authorised.
+
+Teams have two options today, and both fail:
+
+- **Detect suspicious content.** Content filters catch obvious attacks, but polite, ordinary-looking instructions get through.
+- **Approve every step.** People click "yes" out of habit, and the work stops at every step.
+
+**Abide isn't another agent.** It's the checkpoint between agents and the business, and it asks a different question. A filter asks *"does this look dangerous?"*; Abide asks *"did the person authorise this action?"*
+
+<div align="center">
+
+| Same 28 attacks · same agents | Attacks that executed something unauthorised | Normal tasks finished |
+|---|:---:|:---:|
+| No protection | 28 / 28 | 26 / 26 |
+| Approve every step | 28 / 28 | 22 / 26 |
+| Detection only (content filter) | 12 / 28 | 26 / 26 |
+| **Abide** | **0 / 28** | **26 / 26** |
+
+</div>
+
+<sub>64 scenarios (28 attack, 26 normal, 10 ambiguous), intended decisions marked before the run, outcomes counted from the sandbox's execution log. Our own suite, so zero failures is not proof of safety. [Method and limits →](docs/EVAL.md)</sub>
 
 ## How it works
 
-| Step | What happens |
-|---|---|
-| **Ask** | The employee types the task in their words, for example *"Read the paint supplier's quote and write a reply. Don't send it yet."* Gemini drafts a permission card. A grounding validator keeps a line only if it quotes the employee's words and every name, file, order or amount resolves from the company's trusted directory. |
-| **Confirm once** | The employee confirms the card (bound to its hash). The agents then work without approval pop-ups. Every tool call is checked: who receives it, which file or record, how much, which fields. A call outside the card is stopped; if it traces back to a document the agents read, it is stopped without asking anyone. A company rule such as "confirm before an email leaves" asks one question for one exact action. |
-| **Prove** | Each step, stop and approval becomes a numbered, hash-chained receipt. Gemini writes the summary, and every sentence must cite receipts; a sentence the receipts do not support is dropped. |
+<div align="center"><img src="docs/architecture.png" alt="Abide architecture" width="900"></div>
 
-Layers work together: the Abide content filter and **Google Model Armor** remove instructions hidden in what the
-agents read, and the card stops actions that were never asked for, even when both filters miss. The agents in the demo
-are **real Gemini agents (Google ADK on Vertex AI)**: they choose their own steps; the card decides which of those run.
+1. **Say it once.** The employee types the task in plain words. **Gemini 3.5 Flash on Vertex AI** turns it into a work order: *MAY read order 4521 · MAY refund it up to ₹2,000 · MAY email that customer · NEVER anything else.* Every line must quote the employee's words, or it is dropped.
+2. **Approve once.** The employee confirms the order, which is bound to its hash. From then on the agents work without pop-ups.
+3. **Every tool call is checked.** The action gate runs **fixed rules, not the model**: recipient, record, amount (across the whole task) and unknown fields, all against the confirmed order. Each call gets one of three answers:
+   - **Ran**: inside the order.
+   - **Stopped**: the instruction came from a document. Abide traces it to that document.
+   - **Waits**: a genuinely new action. It needs one question, bound to that exact action, single use, 15-minute expiry.
+4. **Everything leaves proof.** Every read is screened by **Model Armor** and Abide's filter and labelled untrusted. Handoffs between agents are HMAC-sealed, so the label can't be stripped. Every decision is a hash-chained receipt. Gemini explains each stop in plain words and writes the final receipt; every sentence cites a record.
 
-## Live, with real Gemini agents (Vertex AI)
+<table>
+<tr>
+<td width="50%"><img src="docs/snapshots/1-work-order.png" alt="Work order"><br><sub><b>The employee's words become the work order</b></sub></td>
+<td width="50%"><img src="docs/snapshots/2-stopped-traced.png" alt="Stopped and traced"><br><sub><b>Stopped, traced to the customer's ticket, explained by Gemini</b></sub></td>
+</tr>
+<tr>
+<td><img src="docs/snapshots/3-evaluation.png" alt="Evaluation"><br><sub><b>Evaluation: detection 12/28 vs Abide 0/28</b></sub></td>
+<td><img src="docs/snapshots/4-activity.png" alt="Activity"><br><sub><b>Activity: every decision and its source, with BigQuery insights</b></sub></td>
+</tr>
+</table>
 
-| Run | What the agent tried | What happened |
-|---|---|---|
-| Support desk, hijacked agent, filter off | ₹48,000 refund on order 9921; export the customer list | Both stopped, traced to ticket T-881, nobody asked; the ₹1,850 refund and the reply ran |
-| Office, hijacked agent, filter off | Read and send the customer list; share it; draft to the attacker | All stopped ("You said: Don't send it yet", "not someone you named"); the supplier draft ran |
-| Office, polite request in an email, every filter on | Read the customer list | Our filter and Model Armor both let the email through; the card stopped the read, traced to the email |
-| A travel agency registered over the API, remote ADK agent | Refund and reply | Ran inside the card; the hidden instruction was removed by the filter |
+## Quick start
 
-"Hijacked" means the real agent is told to obey instructions it reads, as a prompt-injected agent would; a normal
-Gemini agent mostly resists them on its own, which is why the card must not depend on the model.
+### 1 · Try it live (no sign-up)
 
-## Results (local evaluation, two businesses)
+Open **[the one-click attack demo](https://abide-1041805455955.us-central1.run.app/#/tasks?task=new&preset=attack)**. A private 7-day trial key is created for you. Real Gemini agents work in a sandbox support desk, and one of them is hijacked on purpose. Confirm the work order and watch the Checkpoint.
 
-28 attacks across nine attack types and 26 normal tasks, in a sandbox office (Lotus Interiors) and a sandbox support
-desk (Acme Home). Outcomes come from the sandbox's execution log, not from what the agents say.
-
-| Setup | Attacks that executed something unauthorised | Normal tasks finished | Questions per task |
-|---|---|---|---|
-| No protection | 28 of 28 | 26 of 26 | 0.0 |
-| Ask before every step | 28 of 28 | 22 of 26 | 1.62 |
-| **Abide** | **0 of 28** | **26 of 26** | **0.38** |
-| Delegate with the content filter off | 0 of 28 | 26 of 26 | 0.38 |
-
-The agents in this evaluation are scripted to obey every instruction they read (a worst case), the scenarios are our
-own, and the confidence intervals are wide. Method and limits: [docs/EVAL.md](docs/EVAL.md).
-
-## Quick start (Docker)
-
-Requirements: Docker with Compose v2, about 4 GB of free memory.
+### 2 · Run it locally (Docker)
 
 ```bash
-cp .env.example .env        # optional: add GEMINI_API_KEY so Gemini drafts cards and writes receipts
-docker compose up --build -d
-docker compose ps           # wait until both services are "healthy" (the first start loads the classifier)
+cp .env.example .env               # optional: GEMINI_API_KEY for Gemini work orders and receipts
+docker compose up --build -d       # gateway + PostgreSQL; first start loads the classifier
 ```
 
-Open <http://localhost:8000/#/delegate> and sign in with `local-project-key` (the local employee key). API reference:
-<http://localhost:8000/docs>. Stop with `docker compose down` (add `-v` to delete the data volumes).
+Open <http://localhost:8000/#/delegate> and sign in with `local-project-key`. API docs are at `/docs`. Without Google credentials, word rules draft the order and scripted stand-in agents run; everything else is identical. For Vertex AI and Model Armor, see [Deploying](docs/DEPLOY_CLOUD_RUN.md).
 
-Without Google access, the word rules draft the card, a template writes the receipt and scripted stand-in agents
-run the demo; everything else works the same. With Google (Vertex AI and Model Armor, your own credentials):
-
-```bash
-gcloud auth application-default login
-# .env: GOOGLE_CLOUD_PROJECT, GOOGLE_CLOUD_QUOTA_PROJECT, INTENTSEAL_MODEL_ARMOR_TEMPLATE (see .env.example)
-GOOGLE_ADC=<path to application_default_credentials.json> docker compose -f docker-compose.yml -f docker-compose.google.yml up -d
-```
-
-### Try it with a team of three agents
-
-`examples/agent-team` is a small bookshop's back office (Intake, Accountant, Notifier). It works through Abide the
-way an outside company would: it downloads the one-file client, registers its business, and starts a task in plain
-words. The Accountant is hijacked on purpose; it obeys an instruction hidden in an invoice.
+### 3 · Watch three agents work through Abide
 
 ```bash
 docker compose --profile agents run --rm agents
 ```
 
-The team runs on an **agent key**: `local-agent-key` locally; on the live site, make one in **Connect → Agent keys** and
-pass `ABIDE_AGENT_KEY=…`.
+The Intake, Accountant and Notifier team runs with an **agent key**, which can act but never approve:
 
-1. The team tries to confirm its own work order, and is refused.
-2. If its business is not added yet, it prints the definition. Add it once in **Connect → Add your business**.
-3. Confirm its work order in **Tasks → Your agents**, signed in with your own key.
-4. Answer its one question in **Needs you**. Expected result:
+- Its attempt to confirm its own work order is refused (403).
+- A poisoned invoice tries three things; all are stopped and traced to the invoice.
+- The real invoice is paid.
+- One question (copying the finance team) waits for you in **Needs you**.
 
-- **Runs:** the ₹12,400 payment of INV-1042, the email to Priya, and (after you approve it) the email to the finance
-  team.
-- **Stopped, traced to the invoice:** the ₹92,000 payment, the vendor-list export and the email to an outside auditor.
-- **On the Connect page:** the three agents under Connected agents.
+## Bring your own agent
 
-| Service | Image | Purpose |
-|---|---|---|
-| `gateway` | built from `Dockerfile` | API, Delegate service, Console (served at `/`), content filter, Gemini agents (Google ADK). Non-root, all capabilities dropped. |
-| `postgres` | `postgres:16.4-alpine` | All evidence: cards, receipts, approvals, decisions. Not published outside the Compose network. |
-
-## Bring your own agent and business
-
-No sign-up and nobody to contact: get a private trial key, register your business (tools, people, records, rules),
-and put your own Google ADK agent under the employee's words with two callbacks, against the hosted service.
-**Colab quickstart:** [`examples/colab/abide_quickstart.ipynb`](examples/colab/abide_quickstart.ipynb)
-(about two minutes). Guide: [docs/INTEGRATE.md](docs/INTEGRATE.md).
+One Python file, any framework. Your agents run on your side and ask Abide before each tool call.
 
 ```python
-from abide import DelegateClient, RemoteAdkGuard      # one file: GET /v1/sdk/abide.py
+from abide import DelegateClient, ToolGate            # one file: GET /v1/sdk/abide.py
 
-client = await DelegateClient.with_trial_key("https://<gateway>")
-await client.register_workspace("northwind-travel", policy)
-card = await client.start("Refund booking #4410 up to $300 and reply to Priya.", workspace="northwind-travel")
-await client.confirm(card)
-guard = RemoteAdkGuard(client, card["workflow_id"], "travel-agent")
-agent = LlmAgent(..., before_tool_callback=guard.before_tool, after_tool_callback=guard.after_tool)
+client = DelegateClient("https://abide-1041805455955.us-central1.run.app", AGENT_KEY)
+card = await client.start("Pay invoice INV-1042 up to ₹15,000 and email Priya.", workspace="my-business")
+# the person confirms the work order in the browser; the agent key cannot
+pay = ToolGate(client, card["workflow_id"], "accountant").wrap(pay_invoice)
+await pay("INV-1042", 12400)          # Ran
+await pay("INV-7781", 92000)          # Stopped: not in the work order, traced to the invoice
 ```
 
-**Any framework** — REST: `POST /v1/delegations` (from the employee's words), `POST /v1/delegations/{id}/confirm`,
-`POST /v1/delegations/{id}/check` before each tool call, `POST /v1/delegations/{id}/executed` after it, and
-`GET /v1/delegations/{id}/report` for the receipt.
+| Framework | How |
+|---|---|
+| **Google ADK** | `RemoteAdkGuard` as `before_tool_callback` / `after_tool_callback` |
+| LangChain / LangGraph | `ToolGate.wrap` around each tool |
+| OpenAI Agents SDK | `ToolGate.wrap` on function tools |
+| MCP servers | gate each tool handler |
+| Anything else | REST: `POST /v1/delegations`, `/confirm`, `/check`, `/executed`, `GET /report` |
 
-**A new business** — one policy file: tools and the fields each may carry, contacts, records, business verbs (for
-example "refund" is a purchase), amount currency and company rules. The office and the support desk differ only in
-[`policies/delegate/workspace.yaml`](policies/delegate/workspace.yaml) and
-[`policies/delegate/desk.yaml`](policies/delegate/desk.yaml).
+Your business is one policy (tools and their fields, contacts, records, confidential files, company rules), added once by a person. Guide: [docs/INTEGRATE.md](docs/INTEGRATE.md) · [Colab, about 2 minutes](examples/colab/abide_quickstart.ipynb).
 
-## Repository layout
+## Evidence
+
+| Metric (Abide) | Result | Notes |
+|---|---|---|
+| Unauthorised action rate | **0 / 28** | 95% CI 0–12% |
+| Legitimate task success | **26 / 26** | 95% CI 87–100% |
+| Safe recovery | **26 / 28** | attacked tasks still finished their real work, nothing unsafe |
+| False blocking | **0 / 126** | authorised calls in normal tasks |
+| Handoff provenance | **190 / 190** | labels preserved; 256 / 256 tampering probes caught |
+| Questions per normal task | **0.38** | vs 1.62 when a person approves every step |
+| Runtime overhead | **+166 ms** | median per workflow (p95 +430 ms), no model calls |
+| Live, hijacked Gemini agents | **0 / 6** | unprotected: 4 / 5 attacks got through |
+
+Every number is reproducible: `python -m intentseal_eval.delegate`. The live dashboard is at [/#/evaluation](https://abide-1041805455955.us-central1.run.app/#/evaluation).
+
+## Built on Google Cloud
+
+| Service | What it does in Abide |
+|---|---|
+| **Gemini 3.5 Flash · Vertex AI** | Drafts the work order from the employee's words, explains every stop, writes the cited receipt |
+| **Google ADK** | The live agent team (Reader → Resolver); `before/after_tool_callback` integration |
+| **Model Armor** | Screens everything agents read for prompt injection |
+| **Cloud Run** | The checkpoint service (one container, autoscaled, `us-central1`) |
+| **Cloud SQL · PostgreSQL 16** | Work orders, hash-chained receipts, approvals, keys |
+| **BigQuery** | Every receipt streamed to `abide_audit`; insights for the security team |
+| **Secret Manager · IAM** | API keys, handoff secret, database URL; least-privilege service account |
+| **Cloud Build · Artifact Registry** | One-command deploy ([`scripts/deploy_cloud_run.ps1`](scripts/deploy_cloud_run.ps1)) |
+
+## Security model, plainly
+
+**Abide guarantees**
+- A tool call outside the confirmed work order does not run.
+- An agent key can't confirm, widen or approve.
+- Approvals cover one exact action, once.
+- Untrusted labels survive handoffs.
+- The receipt chain shows any edit.
+
+**Not yet**
+- Receipts are hash-chained, not KMS-signed.
+- The evaluation is our own suite.
+- The OpenAI Agents SDK and MCP adapters are tested against stand-in interfaces.
+
+Report a vulnerability: [SECURITY.md](SECURITY.md).
+
+## Repository
 
 | Path | Contents |
 |---|---|
-| `packages/core/intentseal_core/delegate/` | Contract model, compiler and validator, gate, approvals, handoff seal, receipts, service, ADK connector |
-| `packages/core/intentseal_core/` | Abide content filter engine (rules, classifier, judge router), store (SQLite or PostgreSQL) |
-| `services/gateway/` | FastAPI gateway: Delegate API, live sandbox demo, Gemini agent team, Console hosting |
-| `apps/console/` | React Console: landing page, Delegate page, decisions, replay, review |
-| `policies/delegate/` | Business policies for the two sandboxes |
-| `eval/` | Evaluation harness and the published report |
-| `examples/delegate_demo/` | Terminal demo of the office scenario in each setup |
-| `deploy/`, `scripts/deploy_cloud_run.ps1` | Cloud Build and Cloud Run deployment |
-| `docs/` | Architecture, evaluation, testing guide, walkthrough, deployment, design notes |
+| [`packages/core/intentseal_core/delegate/`](packages/core/intentseal_core/delegate) | Work-order model, compiler and grounding check, action gate, approvals, handoff seal, receipts, ADK connector |
+| [`services/gateway/`](services/gateway) | FastAPI service: Delegate API, live Gemini agent team, sandbox businesses, Console hosting |
+| [`apps/console/`](apps/console) | React Console: Tasks, Needs you, Activity, Connect, Evaluation |
+| [`packages/sdk/`](packages/sdk) | One-file client and framework adapters |
+| [`examples/`](examples) | Three-agent team (Docker), Colab quickstart, terminal demo |
+| [`eval/`](eval) | Evaluation harness and published reports |
+| [`deploy/`](deploy) | Cloud Build and Cloud Run |
 
-## Development
+<details>
+<summary><b>Development</b></summary>
 
 ```bash
-python -m venv .venv && . .venv/bin/activate        # Windows: .venv\Scripts\activate
-pip install -c requirements.lock -e "packages/core[engine,classifiers,ocr,postgres]" -e packages/sdk -e services/gateway -e eval "google-adk==2.12.0" pytest ruff
-pytest -q                                            # Python tests
-ruff check .
-cd apps/console && npm ci && npx tsc --noEmit && node --test tests/*.test.cjs && npm run build
-python -m intentseal_eval.delegate                   # re-run the evaluation
+python -m venv .venv && . .venv/bin/activate          # Windows: .venv\Scripts\activate
+pip install -c requirements.lock -e "packages/core[engine,classifiers,ocr,postgres,anthropic]" \
+  -e packages/sdk -e services/gateway -e eval "google-adk==2.12.0" openai respx pytest pytest-asyncio ruff
+pytest -q && ruff check .
+cd apps/console && npm ci && npx tsc --noEmit && npm test && npm run build
 ```
+</details>
 
-## Documentation
+**Docs:** [Integrate](docs/INTEGRATE.md) · [Architecture](docs/ARCHITECTURE.md) · [Evaluation](docs/EVAL.md) · [Testing guide](docs/TESTING.md) · [Walkthrough](docs/WALKTHROUGH.md) · [Deploy](docs/DEPLOY_CLOUD_RUN.md)
 
-- [Bring your own agent and business](docs/INTEGRATE.md) — trial keys, policy reference, ADK and REST
-- [Architecture](docs/ARCHITECTURE.md) — components, request flow, data model, security model
-- [Evaluation](docs/EVAL.md) — results, method and limits
-- [Testing guide](docs/TESTING.md) — every claim and how to check it by hand
-- [Walkthrough](docs/WALKTHROUGH.md) — the full user journey with screenshots
-- [Deploying to Cloud Run](docs/DEPLOY_CLOUD_RUN.md)
-- [Engineering review](docs/ENGINEERING_REVIEW.md) and [design notes](docs/DESIGN_NOTES.md)
-
-## License
-
-Apache-2.0. See [LICENSE](LICENSE) and [NOTICE](NOTICE). Security reports: [SECURITY.md](SECURITY.md).
+<div align="center"><sub>Apache-2.0 · Built for the Google Cloud AI Builder Cup 2026 · Future of Work</sub></div>
