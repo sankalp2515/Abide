@@ -4,6 +4,7 @@ import { HashRouter, Navigate, Route, Routes } from "react-router-dom";
 import "./index.css";
 import "./landing.css";
 import { Layout } from "./components/Layout";
+import { Evaluation } from "./pages/Evaluation";
 import { Connect } from "./pages/Connect";
 import { Decisions } from "./pages/Decisions";
 import { Inbox } from "./pages/Inbox";
@@ -34,6 +35,7 @@ createRoot(document.getElementById("root")!).render(
           <Route path="/inbox" element={<Inbox />} />
           <Route path="/activity" element={<Decisions />} />
           <Route path="/connect" element={<Connect />} />
+          <Route path="/evaluation" element={<Evaluation />} />
           <Route path="/replay" element={<Replay />} />
           <Route path="/decisions" element={<Decisions />} />
           <Route path="/review" element={<Review />} />

@@ -4,6 +4,7 @@ import { serviceOrigin, tasks, type DApproval, type DEvent, type DReceipt, type 
 import { signOutEmployee, useEmployee } from "../employee";
 import { Empty, ErrorNote, PageHeader, Stamp, ago } from "../components/ui";
 import { ApprovalCard, Checkpoint, KeyGate, StepDetails, TaskProgress, WorkOrder } from "./Delegate";
+import { EvalStrip } from "./Evaluation";
 
 /* "Your agents": the tasks your own agents run through the API (the one-file client, ADK, LangChain, MCP …), with
    the same work order, questions and receipt as the sandbox. Sign in with the key your agent uses. */
@@ -105,6 +106,7 @@ export function TaskDetail({ apiKey, wf }: { apiKey: string; wf: string }) {
       {error && <ErrorNote>{error}</ErrorNote>}
       <TaskProgress confirmed={confirmed} events={steps} waiting={pending.length} working={false} hasReceipt={!!report} />
       {confirmed && <Checkpoint events={steps} working={false} live={false} sandbox={false} />}
+      {confirmed && <EvalStrip />}
       <WorkOrder state={state} busy={busy} onConfirm={(accept) => act(() => tasks.confirm(apiKey, wf, state.contract.hash, accept))}>
         {confirmed && (
           <form className="flex flex-col gap-2 border-t pt-4 sm:flex-row" style={{ borderColor: "var(--line)" }} onSubmit={(e) => { e.preventDefault(); if (words.trim()) act(() => tasks.amend(apiKey, wf, words)).then(() => setWords("")); }}>

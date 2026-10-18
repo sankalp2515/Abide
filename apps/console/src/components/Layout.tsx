@@ -89,6 +89,7 @@ const ICON: Record<string, ReactNode> = {
   inbox: <><path d="M4 13l2.5-8h11L20 13v6H4z" /><path d="M4 13h5l1 2h4l1-2h5" /></>,
   activity: <path d="M4 18l5-6 4 3 7-9" />,
   connect: <path d="M9 7H6a4 4 0 000 8h3M15 7h3a4 4 0 010 8h-3M8 11h8" />,
+  eval: <><path d="M4 20h16" /><path d="M7 20v-6M12 20V8M17 20v-9" /></>,
 };
 
 /** Four places, one idea each (docs/DESIGN.md). Old addresses still open their pages. */
@@ -97,6 +98,7 @@ const NAV: { label: string; icon: string; to: string; match: string[] }[] = [
   { label: "Needs you", icon: "inbox", to: "/inbox", match: ["/inbox", "/review"] },
   { label: "Activity", icon: "activity", to: "/activity", match: ["/activity", "/decisions", "/replay"] },
   { label: "Connect", icon: "connect", to: "/connect", match: ["/connect", "/setup", "/policy"] },
+  { label: "Evaluation", icon: "eval", to: "/evaluation", match: ["/evaluation"] },
 ];
 
 /** How many questions wait for the signed-in employee, across every task (the sidebar badge). */

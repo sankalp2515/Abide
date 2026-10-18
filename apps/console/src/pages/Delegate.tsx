@@ -3,6 +3,7 @@ import { Link, useSearchParams } from "react-router-dom";
 import { delegate, type DApproval, type DClause, type DEvent, type DState } from "../api";
 import { setRemember, signInEmployee, signOutEmployee, startTrial, useEmployee } from "../employee";
 import { Empty, ErrorNote, PageHeader, SealMark, Stamp, type StampKind } from "../components/ui";
+import { EvalStrip } from "./Evaluation";
 
 type Domain = "office" | "desk";
 /** Two businesses, one product: the request, the sandbox and the attack choices change; the protection does not. */
@@ -550,6 +551,7 @@ export function Delegate({ open, onOpened, onNew, onMissing, embedded = false }:
         <div className="space-y-4">
           <TaskProgress confirmed={!!confirmed} events={events} waiting={pending.length} working={!!working} hasReceipt={!!state.report} />
           {confirmed && <Checkpoint events={events} working={!!working} live={state.demo?.agents === "gemini"} sandbox />}
+          {confirmed && <EvalStrip />}
         </div>
       )}
       {state && (

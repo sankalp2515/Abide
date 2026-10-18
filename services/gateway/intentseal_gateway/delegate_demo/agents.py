@@ -108,6 +108,7 @@ class DelegateGuard(Guard):
         super().__init__(ws, human, svc.policy)
         self.svc, self.wf, self.inspect = svc, workflow_id, inspect
         self.waiting: dict[str, tuple[str, str, dict[str, Any], Event]] = {}
+        self.envelopes: list[tuple[dict[str, Any], list[str]]] = []
 
     async def resume(self, approval_id: str, approved: bool = True) -> str | None:
         item = self.waiting.pop(approval_id, None)
@@ -163,7 +164,30 @@ class DelegateGuard(Guard):
 
     async def handoff(self, from_agent: str, to_agent: str, content: str) -> str:
         env = self.svc.seal(self.wf, from_agent, to_agent, content, list(self.sources))
+        self.envelopes.append((env, list(self.sources)))      # kept for the provenance count in the evaluation
         return as_agent_input(self.svc.open(env, self.wf))
+
+
+class FilterOnly(DelegateGuard):
+    """The content filter alone (detection without enforcement): every read is screened exactly as in Abide, but
+    actions run without the gate and the handoff is plain text. The comparison arm for "detecting is not preventing"."""
+
+    async def call(self, agent: str, tool: str, args: dict[str, Any]) -> str:
+        res, fname = self.ws.run(tool, args)
+        self.events.append(Event(agent, tool, args, "ran"))
+        if not self.is_read(tool):
+            return self._as_text(res, fname)
+        spec = self.policy.tools[tool]
+        r_ = next((x for a in spec.resource_args if (x := self.policy.resource(str(args.get(a, ""))))), None)
+        label = self.ws.label_of(tool, args, fname) if hasattr(self.ws, "label_of") else None
+        seen = await self.svc.read(self.wf, agent, res, self.ws.source_of(tool, fname), filename=fname,
+                                   resource=r_.id if r_ else None, label=label)
+        if seen["flagged"]:
+            self.events[-1].note = "Hidden instructions removed before your assistant read it"
+        return seen["content"]
+
+    async def handoff(self, from_agent: str, to_agent: str, content: str) -> str:
+        return content
 
 
 # ---- the obedient brain -----------------------------------------------------------------------------------------------

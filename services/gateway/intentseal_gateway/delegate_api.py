@@ -576,9 +576,19 @@ async def delegate_eval(request: Request) -> dict[str, Any]:
     if not path.is_file():
         raise HTTPException(404, "no Delegate evaluation report")
     rep = _json.loads(path.read_text(encoding="utf-8"))
-    arms = {name: {k: v for k, v in arm["summary"].items() if k != "by_attack_type"}
-            for name, arm in rep.get("arms", {}).items()}
-    return {"created": rep.get("created"), "method": rep.get("method"), "arms": arms}
+
+    def brief(r: dict[str, Any]) -> dict[str, Any]:
+        return {"created": r.get("created"), "method": r.get("method"), "caveat": r.get("caveat"),
+                "scenarios": r.get("scenarios", []),
+                "arms": {name: arm["summary"] for name, arm in r.get("arms", {}).items()},
+                "stops": {name: [{"scenario": row["scenario"], "kind": row.get("attack_type"),
+                                  "unauthorized": [u["tool"] for u in row.get("unauthorized", [])]}
+                                 for row in arm.get("rows", []) if row.get("unauthorized_executed")]
+                          for name, arm in r.get("arms", {}).items()}}
+    out = brief(rep)
+    live = request.app.state.reports / "delegate-gemini.json"     # the small run with real Gemini agents
+    out["gemini"] = brief(_json.loads(live.read_text(encoding="utf-8"))) if live.is_file() else None
+    return out
 
 
 # ---- the client, as one file (for notebooks and quick starts: no package to install) -------------------------------

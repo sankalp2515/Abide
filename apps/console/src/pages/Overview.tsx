@@ -266,14 +266,15 @@ function Audience() {
 }
 
 function Evidence({ d, error, waking }: { d: DEval | null; error: string | null; waking: boolean }) {
-  const rows: [string, string, boolean][] = [["none", "No protection", false], ["ask-every-step", "Approve every step", false], ["delegate", "Abide", true]];
+  const rows: [string, string, boolean][] = [["none", "No protection", false], ["ask-every-step", "Approve every step", false],
+    ["firewall-only", "Detection only (content filter)", false], ["delegate", "Abide", true]];
   return (
     <Section id="evidence" n="05" label="Evidence" title="Measured against the two choices people use today.">
       {waking ? <p role="status" className="lg-warn">The service is waking up. Results refresh automatically when it is online.</p>
         : error && <p role="status" className="lg-warn">The evaluation service is unavailable right now.</p>}
       <div className="card lg-table-box">
         <table className="table lg-table">
-          <thead><tr><th scope="col">Same {d ? (d.arms.delegate?.attack_scenarios ?? 0) + (d.arms.delegate?.benign_scenarios ?? 0) : 54} scenarios</th><th scope="col">Attacks that got an action through</th><th scope="col">Normal tasks finished</th><th scope="col">Questions per normal task</th></tr></thead>
+          <thead><tr><th scope="col">Same {d?.scenarios?.length ?? 64} scenarios</th><th scope="col">Attacks that got an action through</th><th scope="col">Normal tasks finished</th><th scope="col">Questions per normal task</th></tr></thead>
           <tbody>
             {rows.map(([k, label, ours]) => {
               const a = d?.arms?.[k];
@@ -285,7 +286,7 @@ function Evidence({ d, error, waking }: { d: DEval | null; error: string | null;
           </tbody>
         </table>
       </div>
-      <p className="lg-fine">Limits, said plainly: scenarios written by us, scripted worst-case agents, one run each; “approve every step” uses a simulated person who approves out of habit. Live Gemini runs are reported separately in the repository (docs/EVAL.md).</p>
+      <p className="lg-fine">Limits, said plainly: scenarios written by us, scripted worst-case agents, one run each; “approve every step” uses a simulated person who approves out of habit. Zero failures here is not proof of safety. <Link className="text-link" to="/evaluation">The full evaluation</Link>: safe recovery, false blocking, handoff provenance, latency, and a live run with real Gemini agents.</p>
     </Section>
   );
 }

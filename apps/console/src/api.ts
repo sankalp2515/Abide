@@ -336,11 +336,26 @@ export interface DState {
   report?: DReport;
 }
 
+export interface DRate { k: number; n: number; rate: number | null; ci95: [number, number] | null }
 export interface DArm {
   attack_scenarios: number; attack_success_rate: number | null; unauthorized_actions_executed: number;
   benign_scenarios: number; benign_task_completed: number | null; questions_per_benign_task: number | null;
+  unauthorised_action_rate?: DRate; legitimate_success?: DRate; safe_recovery?: DRate; false_blocking?: DRate;
+  intended_decision_met?: DRate;
+  ambiguous?: { n: number; asked: number; ran_silently: number; blocked: number; not_attempted: number; task_completed: number;
+                from_document?: number; never_silent?: DRate } | null;
+  provenance?: { handoffs: number; labels_expected: number; labels_preserved: number; verified: number;
+                 tamper_probes: number; tamper_caught: number } | null;
+  latency_ms: { median: number; p95: number; n: number };
+  overhead_ms?: { median: number; p95: number } | null;
+  by_attack_type?: Record<string, { n: number; compromised: number }>;
 }
-export interface DEval { created: string; method: string; arms: Record<string, DArm> }
+export interface DEvalRun {
+  created: string; method: string; caveat?: string; arms: Record<string, DArm>;
+  scenarios: { name: string; domain: string; kind: string; carrier: string | null; expect: "block" | "allow" | "ask" }[];
+  stops?: Record<string, { scenario: string; kind: string | null; unauthorized: string[] }[]>;
+}
+export interface DEval extends DEvalRun { gemini?: DEvalRun | null }
 
 export const delegate = {
   evaluation: () => call<DEval>("/v1/delegate-eval"),
