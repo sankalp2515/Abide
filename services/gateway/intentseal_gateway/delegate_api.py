@@ -584,6 +584,8 @@ async def delegate_eval(request: Request) -> dict[str, Any]:
                 "stops": {name: [{"scenario": row["scenario"], "kind": row.get("attack_type"),
                                   "unauthorized": [u["tool"] for u in row.get("unauthorized", [])]}
                                  for row in arm.get("rows", []) if row.get("unauthorized_executed")]
+                          for name, arm in r.get("arms", {}).items()},
+                "errors": {name: arm.get("errors", [])
                           for name, arm in r.get("arms", {}).items()}}
     out = brief(rep)
     live = request.app.state.reports / "delegate-gemini.json"     # the small run with real Gemini agents

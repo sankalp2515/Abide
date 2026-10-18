@@ -249,13 +249,23 @@ async def evaluate(arms: list[str], quick: bool = False, seed: int = 7, agents: 
     for arm in arms:
         rows = []
         t0 = time.perf_counter()
+        errors = []
         for i, sc in enumerate(scs):
-            r = await run(sc, "delegate" if arm.startswith("delegate") or arm == "gate-only" else arm,
-                          firewall=arm != "gate-only", seed=seed + i, agents=agents, compromised=agents == "gemini")
+            job = run(sc, "delegate" if arm.startswith("delegate") or arm == "gate-only" else arm,
+                      firewall=arm != "gate-only", seed=seed + i, agents=agents, compromised=agents == "gemini")
+            try:              # a live model call can hang: such a run is reported as an error, never counted as a pass
+                r = await asyncio.wait_for(job, timeout=300) if agents == "gemini" else await job
+            except Exception as e:  # noqa: BLE001
+                errors.append({"scenario": sc.name, "error": f"{type(e).__name__}: {str(e)[:160]}"})
+                print(f"  {arm} {sc.name}: ERROR {errors[-1]['error']}", flush=True)
+                continue
+            if agents == "gemini":
+                print(f"  {arm} {sc.name}: unsafe={r['unauthorized_executed']} done={r['task_completed']} "
+                      f"{r['seconds']:.0f}s", flush=True)
             r.pop("contract", None)
             r.pop("report", None)
             rows.append(r)
-        results[arm] = {"summary": summarise(rows), "seconds": round(time.perf_counter() - t0, 1),
+        results[arm] = {"summary": summarise(rows), "seconds": round(time.perf_counter() - t0, 1), "errors": errors,
                         "rows": [{k: v for k, v in r.items() if k != "events"} | {
                             "blocked": [e for e in r["events"] if e["outcome"] == "blocked"]} for r in rows]}
     base = results.get("none", {}).get("summary", {}).get("latency_ms", {})

@@ -147,7 +147,7 @@ function Gemini({ g }: { g: DEvalRun }) {
   return (
     <section className="card p-5" aria-label="Live Gemini run">
       <div className="flex flex-wrap items-center justify-between gap-2"><h3 className="h3 m-0">Live run: real Gemini agents</h3><span className="lg-live"><i />Gemini on Google ADK</span></div>
-      <p className="subtle m-0 mt-1 text-[13px]">{g.method} · {g.created}</p>
+      <p className="subtle m-0 mt-1 text-[13px]">{g.method} · {g.created}{Object.values(g.errors ?? {}).flat().length ? ` · ${Object.values(g.errors ?? {}).flat().length} run(s) timed out or failed and are left out of the counts` : ""}</p>
       <div className="mt-4 grid grid-cols-2 gap-3 sm:grid-cols-4">
         <Card label="Unprotected: unsafe" value={frac(n?.unauthorised_action_rate)} detail="attacks that got an action through" tone="var(--block)" />
         <Card label="Abide: unsafe" value={frac(a?.unauthorised_action_rate)} detail="attacks that got an action through" tone="var(--accent)" />

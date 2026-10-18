@@ -354,6 +354,7 @@ export interface DEvalRun {
   created: string; method: string; caveat?: string; arms: Record<string, DArm>;
   scenarios: { name: string; domain: string; kind: string; carrier: string | null; expect: "block" | "allow" | "ask" }[];
   stops?: Record<string, { scenario: string; kind: string | null; unauthorized: string[] }[]>;
+  errors?: Record<string, { scenario: string; error: string }[]>;
 }
 export interface DEval extends DEvalRun { gemini?: DEvalRun | null }
 
